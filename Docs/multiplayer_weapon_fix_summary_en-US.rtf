@@ -1,0 +1,133 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs22
+\b Multiplayer Weapon Fix Summary\b0\par
+\par
+\b Project Context\b0\par
+UE5.5 first-person / multiplayer FPS demo. This stage focused on weapon pickup, attachment, tracer, and firing logic issues observed in listen-server plus client-window testing.\par
+\par
+\b 1. Crosshair / Widget Logic\b0\par
+Added C++ widget creation flow for Crosshair and aligned it with existing Score / Death / MatchResult / Scoreboard creation logic in AMyFpsCharacter.\par
+Added visibility control helper for Crosshair so it can be hidden on death and match end, then shown again after local pawn restart / controller rebind.\par
+\par
+\b 2. First-Person Weapon Attachment Socket Upgrade\b0\par
+Original code attached the weapon to GripPoint. The first-person skeleton changed to WeaponPoint, so attachment logic was updated.\par
+Technical route:\par
+- Added separate first-person and third-person attachment socket names.\par
+- First-person defaults to WeaponPoint.\par
+- Third-person was left configurable because full 3P skeletal socket resources were not ready.\par
+- If third-person socket is empty, attachment falls back to mesh attachment instead of hard failure.\par
+\par
+\b 3. Crosshair and HUD Stability\b0\par
+Crosshair widget lifecycle was centralized in AMyFpsCharacter.\par
+Technical route:\par
+- Create widget only for local controller.\par
+- Store widget instance for later visibility control.\par
+- Hide on death / match finished.\par
+- Re-show on PawnClientRestart / OnRep_Controller / input reinitialization.\par
+\par
+\b 4. Fire / Reload / Equip Montage Pipeline\b0\par
+The weapon component was extended to support Fire, Reload, and Equip montages consistently.\par
+Technical route:\par
+- Added ReloadAnimation and EquipAnimation alongside FireAnimation.\par
+- Added busy-state gating using bIsReloading and bIsEquipping.\par
+- Added PlayFireCosmetics, PlayReloadCosmetics, and PlayEquipCosmetics as dedicated action entry points.\par
+- Added montage stop handling so fire montage does not remain active after a shot.\par
+- Added runtime montage debug logs to confirm mesh, anim instance, montage, and playback duration.\par
+\par
+\b 5. Fire Logic Upgrade: Camera Aim + Muzzle Spawn\b0\par
+The original projectile logic used camera rotation with a generic offset. This was upgraded to a standard FPS aiming route.\par
+Technical route:\par
+- Trace from camera center forward.\par
+- If trace hits, use impact point as AimPoint.\par
+- If no hit, use a far point in front of camera.\par
+- Spawn projectile / hitscan effect from muzzle location.\par
+- Aim from muzzle toward AimPoint.\par
+\par
+\b 6. MuzzlePoint Integration\b0\par
+Weapon blueprints added an ArrowComponent named MuzzlePoint and tagged it with muzzle.\par
+Technical route:\par
+- Added MuzzleComponentTag = muzzle.\par
+- Added GetMuzzleTransform().\par
+- Search order:\par
+  1) SceneComponent with tag muzzle.\par
+  2) SceneComponent named MuzzlePoint.\par
+  3) Fallback to legacy MuzzleOffset.\par
+- Added debug logs to verify component name, tag, location, and rotation at runtime.\par
+\par
+\b 7. Hitscan Rifle Path + Projectile Fallback Path\b0\par
+For a normal automatic rifle, damage routing was changed to hitscan, while preserving projectile support for future rocket / grenade weapons.\par
+Technical route:\par
+- Added EWeaponFireMode with Hitscan and Projectile modes.\par
+- WeaponDataRow now carries FireMode, HitscanDistance, and TracerEffect.\par
+- Fire() now computes AimPoint once, then dispatches to FireHitscan() or FireProjectile().\par
+- Hitscan path applies damage directly with line trace.\par
+- Projectile path remains available for future explosive / slow projectiles.\par
+\par
+\b 8. Niagara Tracer Integration\b0\par
+Tracer visual was aligned to Niagara user parameters already configured in the asset.\par
+Technical route:\par
+- Spawn tracer system from muzzle location instead of world origin.\par
+- Set Niagara user parameters:\par
+  User.MuzzleLocation\par
+  User.ImpactLocation\par
+- Updated deprecated Niagara parameter API to current FName-based SetVariableVec3.\par
+- Added tracer debug logs:\par
+  SpawnTracerEffect called\par
+  Niagara spawned successfully\par
+\par
+\b 9. Projectile Self-Interference Fix\b0\par
+When projectile mode was active, aim traces could hit earlier projectiles, causing later shots to stop in mid-air.\par
+Technical route:\par
+- Replaced single trace with multi trace for aim acquisition.\par
+- Filtered out owning character, weapon actor, and AMyFpsProjectile from candidate hits.\par
+- Set projectile spawn handling to AlwaysSpawn.\par
+- Forced spawned projectile collision to ignore the owner character and weapon actor.\par
+\par
+\b 10. Multiplayer Pickup Prompt and Blue Pickup Light Fix\b0\par
+Two issues were addressed:\par
+- Pickup prompt could still appear on an already-equipped weapon.\par
+- Blue pickup light could remain visible under a picked-up weapon.\par
+Technical route:\par
+- Made UTP_PickUpComponent::bPickupEnabled replicated with OnRep_PickupEnabled().\par
+- Centralized pickup-state refresh to update overlap and prompt visibility consistently on all clients.\par
+- Added replicated held-state bIsHeld in UTP_WeaponComponent.\par
+- Pickup visual logic now depends on replicated held-state and pickup-enabled state, not only local Character pointer presence.\par
+\par
+\b 11. Multiplayer Tracer Visibility Fix\b0\par
+Originally only the locally firing player could see the tracer beam.\par
+Technical route:\par
+- Added MulticastSpawnTracer().\par
+- Hitscan path now asks the server to multicast tracer spawn to all clients.\par
+- Result: tracer visibility is no longer limited to the local firing client.\par
+\par
+\b 12. Equipped Weapon Collision / Fly-Away Fix\b0\par
+After pickup, the weapon and player could enter unstable collision feedback, sometimes launching the player upward.\par
+Technical route:\par
+- While equipped:\par
+  Weapon actor collision disabled.\par
+  Weapon primitive components set to NoCollision.\par
+  Responses set to Ignore.\par
+  Components explicitly ignore movement collision with the holding character.\par
+- While dropped:\par
+  Actor collision re-enabled.\par
+  PhysicsActor profile restored.\par
+  Pawn blocking restored.\par
+\par
+\b Current Status\b0\par
+Resolved or materially improved:\par
+- Crosshair widget lifecycle and visibility.\par
+- First-person attachment socket migration to WeaponPoint.\par
+- MuzzlePoint-based spawn transform acquisition.\par
+- Rifle hitscan damage route with Niagara tracer integration.\par
+- Pickup prompt / pickup blue light replication issues.\par
+- Equipped weapon collision causing player launch / blockage.\par
+\par
+\b Remaining Work Recommended\b0\par
+1. Finalize third-person attachment route with a stable 3P socket or dedicated attach scene component.\par
+2. Verify remote clients now see correct tracer and weapon attachment positions in all pickup cases.\par
+3. If needed, split first-person and third-person weapon representation more explicitly to avoid view-specific attachment conflicts.\par
+\par
+\b Notes\b0\par
+This summary is focused on the technical route used during the debugging / stabilization pass, so later iterations can continue from a documented baseline instead of rediscovering the same failure modes.\par
+}

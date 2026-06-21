@@ -1,0 +1,627 @@
+{
+	"folders": [
+		{
+			"name": "MyFps",
+			"path": "."
+		},
+		{
+			"name": "UE5",
+			"path": "G:\\UE_5.5"
+		}
+	],
+	"settings": {
+		"typescript.tsc.autoDetect": "off",
+		"npm.autoDetect": "off",
+		"terminal.integrated.env.windows": {
+			"PATH": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64;${env:PATH}",
+			"DOTNET_ROOT": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64",
+			"DOTNET_HOST_PATH": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64\\dotnet.exe",
+			"DOTNET_MULTILEVEL_LOOKUP": "0",
+			"DOTNET_ROLL_FORWARD": "LatestMajor"
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"ms-dotnettools.csharp"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "MyFps Win64 Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFps Win64 Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFps Win64 DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFps Win64 Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Test Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Test",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Test Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Test",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFps Win64 Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Test Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Test",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Shipping Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Shipping",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Shipping Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Shipping",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFps Win64 Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFps Win64 Shipping Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFps",
+					"Win64",
+					"Shipping",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFpsEditor Win64 Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Debug",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFpsEditor Win64 DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"DebugGame",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyFpsEditor Win64 Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			},
+			{
+				"label": "MyFpsEditor Win64 Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyFpsEditor",
+					"Win64",
+					"Development",
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "G:\\UE_5.5"
+				}
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Launch MyFps (Debug)",
+				"request": "launch",
+				"program": "G:\\project\\MyFps_UE5.4\\Binaries\\Win64\\UnrealGame-Win64-Debug.exe",
+				"preLaunchTask": "MyFps Win64 Debug Build",
+				"args": [
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFps (DebugGame)",
+				"request": "launch",
+				"program": "G:\\project\\MyFps_UE5.4\\Binaries\\Win64\\UnrealGame-Win64-DebugGame.exe",
+				"preLaunchTask": "MyFps Win64 DebugGame Build",
+				"args": [
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFps (Development)",
+				"request": "launch",
+				"program": "G:\\project\\MyFps_UE5.4\\Binaries\\Win64\\UnrealGame.exe",
+				"preLaunchTask": "MyFps Win64 Development Build",
+				"args": [
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFps (Test)",
+				"request": "launch",
+				"program": "G:\\project\\MyFps_UE5.4\\Binaries\\Win64\\UnrealGame-Win64-Test.exe",
+				"preLaunchTask": "MyFps Win64 Test Build",
+				"args": [
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFps (Shipping)",
+				"request": "launch",
+				"program": "G:\\project\\MyFps_UE5.4\\Binaries\\Win64\\UnrealGame-Win64-Shipping.exe",
+				"preLaunchTask": "MyFps Win64 Shipping Build",
+				"args": [
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFpsEditor (Debug)",
+				"request": "launch",
+				"program": "G:\\UE_5.5\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-Debug.exe",
+				"preLaunchTask": "MyFpsEditor Win64 Debug Build",
+				"args": [
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject"
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFpsEditor (DebugGame)",
+				"request": "launch",
+				"program": "G:\\UE_5.5\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe",
+				"preLaunchTask": "MyFpsEditor Win64 DebugGame Build",
+				"args": [
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject"
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Launch MyFpsEditor (Development)",
+				"request": "launch",
+				"program": "G:\\UE_5.5\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+				"preLaunchTask": "MyFpsEditor Win64 Development Build",
+				"args": [
+					"G:\\project\\MyFps_UE5.4\\MyFps.uproject"
+				],
+				"cwd": "G:\\UE_5.5",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "G:\\UE_5.5\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "G:\\UE_5.5"
+				}
+			},
+			{
+				"name": "Generate Project Files",
+				"type": "coreclr",
+				"request": "launch",
+				"preLaunchTask": "UnrealBuildTool Win64 Development Build",
+				"program": "G:\\UE_5.5\\Engine\\Build\\BatchFiles\\RunUBT.bat",
+				"args": [
+					"-projectfiles",
+					"-vscode",
+					"-project=G:\\project\\MyFps_UE5.4\\MyFps.uproject",
+					"-game",
+					"-engine",
+					"-dotnet"
+				],
+				"env": {
+					"PATH": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64;${env:PATH}",
+					"DOTNET_ROOT": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64",
+					"DOTNET_HOST_PATH": "G:\\UE_5.5\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64\\dotnet.exe",
+					"DOTNET_MULTILEVEL_LOOKUP": "0",
+					"DOTNET_ROLL_FORWARD": "LatestMajor"
+				},
+				"console": "integratedTerminal",
+				"stopAtEntry": false,
+				"cwd": "G:\\UE_5.5"
+			}
+		]
+	}
+}

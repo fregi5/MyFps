@@ -1,0 +1,173 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}{\f1 Microsoft YaHei;}}
+\viewkind4\uc1\fs22
+\f1
+\b\fs32 MyFps UE5.5 - Social Recruitment Client Portfolio Checklist\b0\fs22\par
+\par
+Document purpose: use this checklist to select milestones, track progress, and decide when the demo is ready to present as a game-client portfolio project.\par
+\par
+Status legend:\par
+[DONE] Implemented and previously verified.\par
+[IN PROGRESS] A working route exists, but presentation, consistency, or regression testing is incomplete.\par
+[TODO] Not yet implemented or not yet verified.\par
+\par
+\b 1. Portfolio Positioning\b0\par
+Recommended positioning: A UE5 multiplayer FPS combat demo focused on server-authoritative gameplay, replicated weapon behavior, complete match flow, and first-person/third-person presentation consistency.\par
+\par
+The project should prove four abilities:\par
+- build a complete playable client loop instead of isolated features;\par
+- divide GameMode, GameState, PlayerState, PlayerController, Character, Weapon, and Widget responsibilities correctly;\par
+- diagnose and fix multiplayer authority, replication, collision, attachment, and UI ownership problems;\par
+- polish combat feedback and presentation to a product-prototype level.\par
+\par
+\b 2. P0 - Required Before Portfolio Release\b0\par
+\par
+\b P0-01 Complete Match Loop [DONE]\b0\par
+Scope: join/start match, spawn, receive weapon, fight, take damage, die, score, reach target score, show result, ready up, and start the next round.\par
+Acceptance:\par
+- listen server and at least one client can complete three consecutive rounds;\par
+- no player remains frozen, firing, dead, or stuck on the result screen after a round transition;\par
+- late actions at match end cannot continue firing or moving;\par
+- every respawn has valid health, input, weapon, ammo, and UI state.\par
+\par
+Progress note 2026-06-17:\par
+- round restart now auto-starts the next match after all players ready up;\par
+- player input, weapon grant, ammo, score, and UI state recover correctly after travel;\par
+- match-end firing and movement lock are cleared for the next round.\par
+\par
+\b P0-02 Server-Authoritative Combat [DONE]\b0\par
+Scope: server performs BulletTrace hit decisions, applies damage, handles death, and awards score.\par
+Acceptance:\par
+- clients cannot directly decide damage or score;\par
+- shooter and equipped weapon are ignored by the damage trace;\par
+- player-vs-player damage works in both listen-server and client directions;\par
+- visual tracer does not control hit results.\par
+\par
+\b P0-03 First-Person and Third-Person Consistency [IN PROGRESS]\b0\par
+Scope: weapon attachment, muzzle origin, fire, reload, equip, drop, death, and remote-player presentation.\par
+Acceptance:\par
+- local first-person weapon attaches to WeaponPoint;\par
+- remote third-person weapon attaches to Weapon_R;\par
+- tracer and muzzle effects originate from the visible weapon muzzle in every viewpoint;\par
+- remote fire/reload/equip animation is visible and timed correctly;\par
+- weapon never appears at feet, chest, origin, or its previous world position.\par
+\par
+Progress note 2026-06-17:\par
+- first-person arms are hidden when no weapon is equipped and shown again when a weapon is equipped;\par
+- third-person turn-in-place has an initial working pass;\par
+- third-person reload montage is driven by server-confirmed reload and multicast cosmetics;\par
+- tracer origin now uses each client's locally visible muzzle.\par
+Remaining:\par
+- verify or finish third-person fire, equip, death, and drop presentation;\par
+- run a multiplayer viewpoint pass for listen server and remote client.\par
+\par
+\b P0-04 Weapon Lifecycle and Collision [IN PROGRESS]\b0\par
+Scope: world spawn, pickup query, equipped state, drop physics, replacement spawn, and initial match weapon grant.\par
+Acceptance:\par
+- only the overlapping local player sees the pickup prompt;\par
+- equipped weapons cannot physically push or launch characters;\par
+- dropped weapons fall to the ground and become pickable again;\par
+- collision state is server-owned and replicated consistently;\par
+- starting weapons do not create unintended replacement pickups.\par
+\par
+\b P0-05 Product-Level HUD and Menu Flow [IN PROGRESS]\b0\par
+Scope: health, current ammo, reserve ammo, score, match state, death feedback, result, ready state, host/join flow, and error feedback.\par
+Acceptance:\par
+- all essential combat information is readable without debug logs;\par
+- every widget has the correct owning player and input mode;\par
+- ready state updates locally and through replicated PlayerState state;\par
+- mouse and keyboard focus remain usable after menu/result transitions;\par
+- host/join failures show a visible reason instead of silently doing nothing.\par
+\par
+\b P0-06 Combat Feel Baseline [TODO]\b0\par
+Scope: recoil, muzzle flash, layered fire audio, hit marker, impact effect, damage feedback, kill confirmation, and reload timing.\par
+Acceptance:\par
+- firing gives immediate visual, audio, and camera feedback;\par
+- player hit and world hit have distinguishable feedback;\par
+- damage direction and death are understandable without looking at logs;\par
+- reload ammo transfer occurs at an animation notify or an explicitly documented timing point.\par
+\par
+\b P0-07 Multiplayer Regression Matrix [TODO]\b0\par
+Test matrix: listen server plus one client, listen server plus two clients, repeated pickup/drop, simultaneous firing, death while reloading, match end while firing, reconnect or travel, and three-round soak test.\par
+Acceptance:\par
+- a written test table records expected result, actual result, and pass/fail;\par
+- no recurring authority, collision, duplicate widget, duplicate weapon, or stale input defect;\par
+- critical issues can be reproduced with a short deterministic procedure.\par
+\par
+\b P0-08 Portfolio Presentation Package [IN PROGRESS]\b0\par
+Scope: README, architecture diagram, technical route documents, screenshots, and a 2-4 minute demonstration video.\par
+Acceptance:\par
+- the first page explains the project, personal contribution, architecture, and technical highlights;\par
+- the video shows two networked players, both damage directions, death, score, result, ready, and next round;\par
+- documents explain problems and engineering decisions, not only final features;\par
+- project setup and launch steps are reproducible.\par
+\par
+\b 3. P1 - Strong Differentiators\b0\par
+\par
+\b P1-01 Second Weapon Type [TODO]\b0\par
+Add one weapon with a genuinely different model, preferably a projectile rocket/grenade weapon or a pellet-based shotgun. Demonstrate that the weapon framework is extensible rather than rifle-specific.\par
+\par
+\b P1-02 Data-Driven Weapon Configuration [TODO]\b0\par
+Move damage, rate of fire, magazine size, reload duration, trace range, effects, sounds, and montage references into a weapon data asset or equivalent structured configuration.\par
+\par
+\b P1-03 Network Quality Handling [TODO]\b0\par
+Test under artificial latency and packet loss. Add client prediction or server reconciliation only where the demo visibly needs it. Clearly document that the current server trace is authoritative and what latency tradeoffs remain.\par
+\par
+\b P1-04 Animation Quality [TODO]\b0\par
+Add animation notifies for muzzle events and ammo transfer, upper-body layering, movement-aware poses, death animation/ragdoll policy, and consistent first-person/third-person timing.\par
+\par
+\b P1-05 Audio and Impact Surface Variation [TODO]\b0\par
+Use physical materials or surface types to select impact effects and sounds. Add distance-aware weapon audio for remote players.\par
+\par
+\b P1-06 Performance Evidence [TODO]\b0\par
+Capture Unreal Insights or stat traces for CPU frame time, draw calls, actor count, Niagara cost, and network traffic. Fix at least one measured bottleneck and document before/after evidence.\par
+\par
+\b P1-07 Code Quality and Automated Checks [TODO]\b0\par
+Remove temporary diagnostics, keep responsibilities narrow, document replicated state, add focused automation tests where practical, and ensure clean Development Editor builds from a fresh checkout.\par
+\par
+\b P1-08 Spectator or Kill Feed [TODO]\b0\par
+Add one presentation feature that makes multiplayer activity legible: kill feed, short death camera, spectator mode, or respawn countdown. One polished feature is enough.\par
+\par
+\b 4. P2 - Optional and Currently Low Priority\b0\par
+These features are valuable only after P0 is stable and the chosen P1 highlights are complete.\par
+\par
+- dedicated server packaging and deployment;\par
+- Steam/EOS sessions, matchmaking, NAT traversal, and account services;\par
+- anti-cheat and production security hardening;\par
+- large maps, many game modes, or more than two/three weapons;\par
+- complex AI behavior trees or PvE progression;\par
+- inventory rarity, cosmetics, battle pass, or long-term progression;\par
+- advanced lag compensation with historical server rewind;\par
+- extensive graphics options and platform certification work.\par
+\par
+\b 5. Recommended Milestone Order\b0\par
+\par
+Milestone A - Stability:\par
+Finish P0-01, P0-03, P0-04, and P0-07. The game must survive repeated multiplayer rounds before adding more content.\par
+\par
+Milestone B - Presentation:\par
+Finish P0-05 and P0-06. Replace developer-only feedback with clear HUD, animation, audio, hit, and result feedback.\par
+\par
+Milestone C - Technical Highlight:\par
+Choose P1-01 plus either P1-03 or P1-06. This creates one visible gameplay highlight and one deeper engineering highlight.\par
+\par
+Milestone D - Portfolio Release:\par
+Finish P0-08, run the complete regression matrix, record the demo video, and freeze a stable showcase build.\par
+\par
+\b 6. Suggested Final Scope\b0\par
+Keep the final showcase focused:\par
+- one polished small multiplayer map;\par
+- one complete deathmatch mode;\par
+- two strongly differentiated weapons;\par
+- two to four players;\par
+- complete combat, death, scoring, result, ready, and next-round flow;\par
+- strong first-person and third-person presentation;\par
+- documented server-authoritative architecture and measured performance evidence.\par
+\par
+This scope is large enough to demonstrate senior client-side judgment, but small enough to polish and explain deeply.\par
+\par
+\b 7. Portfolio Release Gate\b0\par
+The demo is ready to present when all P0 items pass, at least two P1 items are complete, no critical multiplayer defect is known, and the project can be understood through the README and video without opening the source code.\par
+\par
+Current review date: 2026-06-17.\par
+}

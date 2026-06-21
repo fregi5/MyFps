@@ -1,0 +1,52 @@
+# Unreal Engine generated files
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Plugin generated files
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Visual Studio and Rider
+.vs/
+.idea/
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.VC.db
+*.VC.opendb
+*.opensdf
+
+# VS Code local workspace state
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Unreal local IDE and build artifacts
+*.pdb
+*.ipch
+*.obj
+*.log
+*.tlog
+*.tmp
+*.cache
+
+# Packaging output and crash reports
+StagedBuilds/
+Saved/Crashes/
+Saved/Logs/
+
+# Keep all source assets and documentation tracked.
+!Config/
+!Content/
+!Docs/
+!Source/
+!*.uproject
+
+# Temporary local helper generated while preparing portfolio documents.
+Docs/generate_portfolio_docs.ps1
