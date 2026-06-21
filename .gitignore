@@ -4,7 +4,7 @@ Build/
 DerivedDataCache/
 Intermediate/
 Saved/
-
+Docs/
 # Plugin generated files
 Plugins/**/Binaries/
 Plugins/**/Intermediate/
@@ -41,12 +41,14 @@ StagedBuilds/
 Saved/Crashes/
 Saved/Logs/
 
-# Keep all source assets and documentation tracked.
+# Keep project source assets tracked.
 !Config/
 !Content/
-!Docs/
 !Source/
 !*.uproject
+
+# Portfolio notes are local working documents, not repository content.
+Docs/
 
 # Temporary local helper generated while preparing portfolio documents.
 Docs/generate_portfolio_docs.ps1
