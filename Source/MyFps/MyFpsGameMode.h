@@ -52,6 +52,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Match")
 	void StartMatchGame();
 
+	UFUNCTION(BlueprintCallable, Category = "Match")
+	void EndHostedGame(APlayerController* HostPlayerController);
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Match")
 	int32 TargetScoreToWin = 500;
@@ -65,6 +68,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn", meta = (ClampMin = "0.1"))
 	float PlayerRespawnDelay = 3.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Match")
+	FName MainMenuMapName = TEXT("L_MainMenu");
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<UMyFpsWeaponDefinition> StartingWeaponDefinition = nullptr;
 
@@ -73,6 +79,7 @@ private:
 	void TryHandleVictory(AController* ScoringController);
 	void FreezeMatch();
 	void SetEnemiesActive(bool bActive);
+	void ResetPlayerToPreMatchState(APlayerController* PlayerController);
 	void TryStartNextRound();
 	void StartNextRoundAfterDelay();
 	void ResetRound();

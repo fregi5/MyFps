@@ -3,12 +3,12 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/Border.h"
-#include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "GameFramework/PlayerController.h"
 #include "MyFpsGameInstance.h"
+#include "MyFpsGameState.h"
 
 void UMyFpsLanMenuWidget::NativeConstruct()
 {
@@ -16,84 +16,64 @@ void UMyFpsLanMenuWidget::NativeConstruct()
 
 	BuildDefaultLayout();
 
-	if (HostButton)
+	if (StartGameButton)
 	{
-		HostButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleHostClicked);
+		StartGameButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleStartGameClicked);
 	}
 
-	if (JoinButton)
+	if (EndGameButton)
 	{
-		JoinButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleJoinClicked);
+		EndGameButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleEndGameClicked);
 	}
 
-	if (CloseButton)
+	if (AMyFpsGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AMyFpsGameState>() : nullptr)
 	{
-		CloseButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleCloseClicked);
+		GameState->OnMatchStateChanged().AddUObject(this, &UMyFpsLanMenuWidget::HandleMatchStateChanged);
+		CachedGameState = GameState;
 	}
 
-	if (StartButton)
-	{
-		StartButton->OnClicked.AddDynamic(this, &UMyFpsLanMenuWidget::HandleStartClicked);
-	}
-
-	if (TitleTextBlock)
-	{
-		TitleTextBlock->SetText(TitleText);
-	}
-
-	if (AddressTextBox)
-	{
-		AddressTextBox->SetHintText(AddressHintText);
-	}
-
-	RefreshLanInfo();
-	SetStatusMessage(FText::FromString(TEXT("输入主机 IP，然后点击 Join")));
+	RefreshControlState();
 }
 
 void UMyFpsLanMenuWidget::NativeDestruct()
 {
-	if (HostButton)
+	if (StartGameButton)
 	{
-		HostButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleHostClicked);
+		StartGameButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleStartGameClicked);
 	}
 
-	if (JoinButton)
+	if (EndGameButton)
 	{
-		JoinButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleJoinClicked);
+		EndGameButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleEndGameClicked);
 	}
 
-	if (CloseButton)
+	if (AMyFpsGameState* GameState = CachedGameState.Get())
 	{
-		CloseButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleCloseClicked);
+		GameState->OnMatchStateChanged().RemoveAll(this);
 	}
 
-	if (StartButton)
-	{
-		StartButton->OnClicked.RemoveDynamic(this, &UMyFpsLanMenuWidget::HandleStartClicked);
-	}
+	CachedGameState.Reset();
 
 	Super::NativeDestruct();
 }
 
-void UMyFpsLanMenuWidget::SetStatusMessage(const FText& InStatusMessage)
+void UMyFpsLanMenuWidget::RefreshControlState()
 {
-	if (StatusTextBlock)
+	const AMyFpsGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AMyFpsGameState>() : nullptr;
+	const bool bMatchStarted = GameState && GameState->IsMyFpsMatchStarted();
+
+	if (StartGameButton)
 	{
-		StatusTextBlock->SetText(InStatusMessage);
+		StartGameButton->SetVisibility(bMatchStarted ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
+
+	if (EndGameButton)
+	{
+		EndGameButton->SetVisibility(bMatchStarted ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
 
-void UMyFpsLanMenuWidget::FocusAddressInput()
-{
-	if (!AddressTextBox)
-	{
-		return;
-	}
-
-	AddressTextBox->SetKeyboardFocus();
-}
-
-void UMyFpsLanMenuWidget::HandleHostClicked()
+void UMyFpsLanMenuWidget::HandleStartGameClicked()
 {
 	APlayerController* PlayerController = GetOwningPlayer();
 	if (!PlayerController)
@@ -103,39 +83,12 @@ void UMyFpsLanMenuWidget::HandleHostClicked()
 
 	if (UMyFpsGameInstance* GameInstance = PlayerController->GetGameInstance<UMyFpsGameInstance>())
 	{
-		SetStatusMessage(FText::FromString(TEXT("正在创建 LAN 主机...")));
-		GameInstance->HostLanGame(GetWorld());
+		GameInstance->StartHostedGame(PlayerController);
+		GameInstance->HideHostControlMenu(PlayerController);
 	}
 }
 
-void UMyFpsLanMenuWidget::HandleJoinClicked()
-{
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (!PlayerController)
-	{
-		return;
-	}
-
-	const FString Address = AddressTextBox ? AddressTextBox->GetText().ToString() : FString();
-	if (UMyFpsGameInstance* GameInstance = PlayerController->GetGameInstance<UMyFpsGameInstance>())
-	{
-		SetStatusMessage(FText::Format(FText::FromString(TEXT("正在连接 {0} ...")), FText::FromString(Address)));
-		GameInstance->JoinLanGame(PlayerController, Address);
-	}
-}
-
-void UMyFpsLanMenuWidget::HandleCloseClicked()
-{
-	if (APlayerController* PlayerController = GetOwningPlayer())
-	{
-		if (UMyFpsGameInstance* GameInstance = PlayerController->GetGameInstance<UMyFpsGameInstance>())
-		{
-			GameInstance->HideLanMenu();
-		}
-	}
-}
-
-void UMyFpsLanMenuWidget::HandleStartClicked()
+void UMyFpsLanMenuWidget::HandleEndGameClicked()
 {
 	APlayerController* PlayerController = GetOwningPlayer();
 	if (!PlayerController)
@@ -145,7 +98,7 @@ void UMyFpsLanMenuWidget::HandleStartClicked()
 
 	if (UMyFpsGameInstance* GameInstance = PlayerController->GetGameInstance<UMyFpsGameInstance>())
 	{
-		GameInstance->StartLanMatch(PlayerController);
+		GameInstance->EndHostedGame(PlayerController);
 	}
 }
 
@@ -164,20 +117,8 @@ void UMyFpsLanMenuWidget::BuildDefaultLayout()
 	UVerticalBox* RootBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("LanMenuRootBox"));
 	RootBorder->SetContent(RootBox);
 
-	TitleTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TitleTextBlock"));
-	AddressTextBox = WidgetTree->ConstructWidget<UEditableTextBox>(UEditableTextBox::StaticClass(), TEXT("AddressTextBox"));
-	HostButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("HostButton"));
-	JoinButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("JoinButton"));
-	StartButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("StartButton"));
-	CloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("CloseButton"));
-	StatusTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StatusTextBlock"));
-	LocalIpTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("LocalIpTextBlock"));
-
-	TitleTextBlock->SetText(TitleText);
-	LocalIpTextBlock->SetAutoWrapText(true);
-	LocalIpTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.45f, 0.72f, 1.0f, 1.0f)));
-	StatusTextBlock->SetAutoWrapText(true);
-	StatusTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.8f, 0.9f, 1.0f, 1.0f)));
+	StartGameButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("StartGameButton"));
+	EndGameButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("EndGameButton"));
 
 	auto AddButtonLabel = [this](UButton* Button, const TCHAR* Name, const FText& LabelText)
 	{
@@ -191,10 +132,8 @@ void UMyFpsLanMenuWidget::BuildDefaultLayout()
 		Button->SetContent(Label);
 	};
 
-	AddButtonLabel(HostButton, TEXT("HostButtonLabel"), HostButtonText);
-	AddButtonLabel(JoinButton, TEXT("JoinButtonLabel"), JoinButtonText);
-	AddButtonLabel(StartButton, TEXT("StartButtonLabel"), StartButtonText);
-	AddButtonLabel(CloseButton, TEXT("CloseButtonLabel"), CloseButtonText);
+	AddButtonLabel(StartGameButton, TEXT("StartGameButtonLabel"), StartButtonText);
+	AddButtonLabel(EndGameButton, TEXT("EndGameButtonLabel"), EndButtonText);
 
 	auto AddToBox = [RootBox](UWidget* Child, float PaddingTop = 8.0f)
 	{
@@ -209,35 +148,11 @@ void UMyFpsLanMenuWidget::BuildDefaultLayout()
 		}
 	};
 
-	AddToBox(TitleTextBlock, 0.0f);
-	AddToBox(LocalIpTextBlock);
-	AddToBox(AddressTextBox);
-	AddToBox(HostButton);
-	AddToBox(JoinButton);
-	AddToBox(StartButton);
-	AddToBox(CloseButton);
-	AddToBox(StatusTextBlock, 12.0f);
+	AddToBox(StartGameButton, 0.0f);
+	AddToBox(EndGameButton);
 }
 
-void UMyFpsLanMenuWidget::RefreshLanInfo()
+void UMyFpsLanMenuWidget::HandleMatchStateChanged()
 {
-	APlayerController* PlayerController = GetOwningPlayer();
-	UMyFpsGameInstance* GameInstance = PlayerController ? PlayerController->GetGameInstance<UMyFpsGameInstance>() : nullptr;
-	if (!GameInstance)
-	{
-		return;
-	}
-
-	if (AddressTextBox)
-	{
-		AddressTextBox->SetText(FText::FromString(GameInstance->GetLastLanAddress()));
-	}
-
-	if (LocalIpTextBlock)
-	{
-		LocalIpTextBlock->SetText(FText::Format(
-			FText::FromString(TEXT("本机 LAN IP: {0}")),
-			FText::FromString(GameInstance->GetLocalLanAddress())
-		));
-	}
+	RefreshControlState();
 }

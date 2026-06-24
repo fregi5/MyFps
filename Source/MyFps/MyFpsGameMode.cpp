@@ -52,6 +52,16 @@ void AMyFpsGameMode::StartPlay()
 	{
 		GetWorldTimerManager().SetTimerForNextTick(this, &AMyFpsGameMode::StartMatchGame);
 	}
+	else if (MyGameInstance && MyGameInstance->ConsumeHostControlMenuAfterTravel())
+	{
+		GetWorldTimerManager().SetTimerForNextTick([this, MyGameInstance]()
+		{
+			if (APlayerController* HostPlayerController = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr)
+			{
+				MyGameInstance->InitializeHostControlMenu(HostPlayerController);
+			}
+		});
+	}
 }
 
 void AMyFpsGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
@@ -185,7 +195,10 @@ void AMyFpsGameMode::RespawnPlayer(AController* PlayerController)
 	if (AMyFpsCharacter* RespawnedCharacter = Cast<AMyFpsCharacter>(PlayerController->GetPawn()))
 	{
 		RespawnedCharacter->ResetHealthToMax();
-		GiveStartingWeaponToCharacter(RespawnedCharacter);
+		if (const AMyFpsGameState* MyGameState = GetGameState<AMyFpsGameState>(); MyGameState && MyGameState->IsMyFpsMatchStarted())
+		{
+			GiveStartingWeaponToCharacter(RespawnedCharacter);
+		}
 	}
 }
 
@@ -313,6 +326,75 @@ void AMyFpsGameMode::StartMatchGame()
 			MyPlayerController->ClientPrepareForMatch();
 		}
 	}
+}
+
+void AMyFpsGameMode::EndHostedGame(APlayerController* HostPlayerController)
+{
+	if (!HostPlayerController || !HostPlayerController->HasAuthority())
+	{
+		return;
+	}
+
+	AMyFpsGameState* MyGameState = GetGameState<AMyFpsGameState>();
+	if (!MyGameState)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(NextRoundStartTimerHandle);
+	MyGameState->SetMatchStarted(false);
+	MyGameState->SetMatchResult(false, FString());
+	MyGameState->SetReadyPlayerCount(0);
+	MyGameState->ClearKillFeedMessages();
+	SetEnemiesActive(false);
+
+	TArray<AMyFpsPlayerController*> RemotePlayerControllers;
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		AMyFpsPlayerController* PlayerController = Cast<AMyFpsPlayerController>(Iterator->Get());
+		if (!PlayerController)
+		{
+			continue;
+		}
+
+		if (PlayerController == HostPlayerController)
+		{
+			ResetPlayerToPreMatchState(PlayerController);
+		}
+		else
+		{
+			RemotePlayerControllers.Add(PlayerController);
+		}
+	}
+
+	for (AMyFpsPlayerController* RemotePlayerController : RemotePlayerControllers)
+	{
+		RemotePlayerController->ClientReturnToMainMenu(MainMenuMapName);
+	}
+}
+
+void AMyFpsGameMode::ResetPlayerToPreMatchState(APlayerController* PlayerController)
+{
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	if (AMyFpsPlayerState* PlayerState = PlayerController->GetPlayerState<AMyFpsPlayerState>())
+	{
+		PlayerState->ResetRoundState();
+	}
+
+	if (AMyFpsCharacter* Character = Cast<AMyFpsCharacter>(PlayerController->GetPawn()))
+	{
+		Character->CancelAutoRespawn();
+		if (UMyFpsWeaponInventoryComponent* InventoryComponent = Character->GetWeaponInventoryComponent())
+		{
+			InventoryComponent->ClearCurrentWeapon();
+		}
+	}
+
+	RespawnPlayer(PlayerController);
 }
 
 void AMyFpsGameMode::GiveStartingWeaponToCharacter(AMyFpsCharacter* Character)

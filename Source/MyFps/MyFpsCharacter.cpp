@@ -290,7 +290,21 @@ PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyFpsCharacter:
 	PlayerInputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &AMyFpsCharacter::ShowScoreboard);
 	PlayerInputComponent->BindKey(EKeys::Tab, IE_Released, this, &AMyFpsCharacter::HideScoreboard);
 	PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AMyFpsCharacter::RespawnInput);
-	PlayerInputComponent->BindKey(EKeys::F6, IE_Pressed, this, &AMyFpsCharacter::ToggleLanMenu);
+	PlayerInputComponent->BindKey(EKeys::F6, IE_Pressed, this, &AMyFpsCharacter::ToggleHostControlMenu);
+}
+
+void AMyFpsCharacter::ToggleHostControlMenu()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController || !PlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (UMyFpsGameInstance* GameInstance = GetGameInstance<UMyFpsGameInstance>())
+	{
+		GameInstance->ToggleHostControlMenu(PlayerController);
+	}
 }
 
 void AMyFpsCharacter::OnPrimaryAction()
@@ -1407,18 +1421,4 @@ bool AMyFpsCharacter::IsPickupActorReachable(AActor* PickupActor) const
 
 	const float ReachDistance = FMath::Max(WeaponHighlightMaxDistance, 100.0f) + GetSimpleCollisionRadius();
 	return FVector::DistSquared(GetActorLocation(), PickupActor->GetActorLocation()) <= FMath::Square(ReachDistance);
-}
-
-void AMyFpsCharacter::ToggleLanMenu()
-{
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	if (!PlayerController || !PlayerController->IsLocalController())
-	{
-		return;
-	}
-
-	if (UMyFpsGameInstance* GameInstance = GetGameInstance<UMyFpsGameInstance>())
-	{
-		GameInstance->ToggleLanMenu(PlayerController);
-	}
 }
