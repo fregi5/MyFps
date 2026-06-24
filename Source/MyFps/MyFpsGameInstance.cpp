@@ -2,24 +2,50 @@
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 #include "MyFpsGameMode.h"
 #include "MyFpsLanMenuWidget.h"
 #include "SocketSubsystem.h"
 
-void UMyFpsGameInstance::ToggleLanMenu(APlayerController* PlayerController)
+void UMyFpsGameInstance::HostGameFromMainMenu(UObject* WorldContextObject, const FName MapName, const FMyFpsHostSettings& Settings)
 {
-	if (LanMenuWidgetInstance && LanMenuWidgetInstance->IsInViewport() && LanMenuWidgetInstance->GetVisibility() != ESlateVisibility::Collapsed)
+	if (!WorldContextObject || MapName.IsNone())
 	{
-		HideLanMenu();
 		return;
 	}
 
-	ShowLanMenu(PlayerController);
+	PendingHostSettings = Settings;
+	PendingHostSettings.MaxPlayers = FMath::Clamp(PendingHostSettings.MaxPlayers, 1, 16);
+	bIsHostingLanGame = true;
+	RequestHostControlMenuAfterTravel();
+	UGameplayStatics::OpenLevel(WorldContextObject, MapName, true, TEXT("listen"));
 }
 
-void UMyFpsGameInstance::ShowLanMenu(APlayerController* PlayerController)
+void UMyFpsGameInstance::JoinLanGame(APlayerController* PlayerController, const FString& Address)
 {
-	if (!PlayerController || !PlayerController->IsLocalController())
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	FString JoinAddress = Address.TrimStartAndEnd();
+	if (JoinAddress.IsEmpty())
+	{
+		return;
+	}
+
+	if (!JoinAddress.Contains(TEXT(":")))
+	{
+		JoinAddress.Append(TEXT(":7777"));
+	}
+
+	SetLastLanAddress(Address.TrimStartAndEnd());
+	PlayerController->ClientTravel(JoinAddress, TRAVEL_Absolute);
+}
+
+void UMyFpsGameInstance::InitializeHostControlMenu(APlayerController* PlayerController)
+{
+	if (!bIsHostingLanGame || !PlayerController || !PlayerController->IsLocalController() || !PlayerController->HasAuthority())
 	{
 		return;
 	}
@@ -40,74 +66,57 @@ void UMyFpsGameInstance::ShowLanMenu(APlayerController* PlayerController)
 	}
 
 	LanMenuWidgetInstance->AddToViewport(200);
-	LanMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-	PlayerController->bShowMouseCursor = true;
-	UWidgetBlueprintLibrary::SetInputMode_GameAndUIEx(PlayerController, LanMenuWidgetInstance, EMouseLockMode::DoNotLock, false);
-	LanMenuWidgetInstance->FocusAddressInput();
+	LanMenuWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
+	LanMenuWidgetInstance->RefreshControlState();
 }
 
-void UMyFpsGameInstance::HideLanMenu()
+void UMyFpsGameInstance::ShowHostControlMenu(APlayerController* PlayerController)
 {
+	InitializeHostControlMenu(PlayerController);
 	if (!LanMenuWidgetInstance)
 	{
 		return;
 	}
 
-	APlayerController* PlayerController = LanMenuWidgetInstance->GetOwningPlayer();
-	LanMenuWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
-
-	if (PlayerController)
-	{
-		PlayerController->bShowMouseCursor = false;
-		UWidgetBlueprintLibrary::SetInputMode_GameOnly(PlayerController);
-	}
+	LanMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+	PlayerController->bShowMouseCursor = true;
+	UWidgetBlueprintLibrary::SetInputMode_GameAndUIEx(PlayerController, LanMenuWidgetInstance, EMouseLockMode::DoNotLock, false);
+	LanMenuWidgetInstance->RefreshControlState();
 }
 
-void UMyFpsGameInstance::HostLanGame(UWorld* InWorld)
+void UMyFpsGameInstance::HideHostControlMenu(APlayerController* PlayerController)
 {
-	if (!InWorld)
+	if (!bIsHostingLanGame || !PlayerController || !PlayerController->IsLocalController() || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	const FString CurrentMapPath = UWorld::RemovePIEPrefix(InWorld->GetOutermost()->GetName());
-	if (CurrentMapPath.IsEmpty())
+	if (LanMenuWidgetInstance)
 	{
-		return;
+		LanMenuWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	HideLanMenu();
-	InWorld->ServerTravel(FString::Printf(TEXT("%s?listen"), *CurrentMapPath));
+	PlayerController->bShowMouseCursor = false;
+	UWidgetBlueprintLibrary::SetInputMode_GameOnly(PlayerController);
 }
 
-void UMyFpsGameInstance::JoinLanGame(APlayerController* PlayerController, const FString& Address)
+void UMyFpsGameInstance::ToggleHostControlMenu(APlayerController* PlayerController)
 {
-	if (!PlayerController)
+	if (!bIsHostingLanGame || !PlayerController || !PlayerController->IsLocalController() || !PlayerController->HasAuthority())
 	{
 		return;
 	}
 
-	FString JoinAddress = Address.TrimStartAndEnd();
-	if (JoinAddress.IsEmpty())
+	if (LanMenuWidgetInstance && LanMenuWidgetInstance->IsInViewport() && LanMenuWidgetInstance->GetVisibility() == ESlateVisibility::Visible)
 	{
-		if (LanMenuWidgetInstance)
-		{
-			LanMenuWidgetInstance->SetStatusMessage(FText::FromString(TEXT("请输入主机 IP 地址")));
-		}
+		HideHostControlMenu(PlayerController);
 		return;
 	}
 
-	if (!JoinAddress.Contains(TEXT(":")))
-	{
-		JoinAddress.Append(TEXT(":7777"));
-	}
-
-	SetLastLanAddress(Address.TrimStartAndEnd());
-	HideLanMenu();
-	PlayerController->ClientTravel(JoinAddress, TRAVEL_Absolute);
+	ShowHostControlMenu(PlayerController);
 }
 
-void UMyFpsGameInstance::StartLanMatch(APlayerController* PlayerController)
+void UMyFpsGameInstance::StartHostedGame(APlayerController* PlayerController)
 {
 	if (!PlayerController || !PlayerController->HasAuthority())
 	{
@@ -116,9 +125,23 @@ void UMyFpsGameInstance::StartLanMatch(APlayerController* PlayerController)
 
 	if (AMyFpsGameMode* GameMode = PlayerController->GetWorld() ? PlayerController->GetWorld()->GetAuthGameMode<AMyFpsGameMode>() : nullptr)
 	{
-		HideLanMenu();
 		GameMode->StartMatchGame();
 	}
+}
+
+void UMyFpsGameInstance::EndHostedGame(APlayerController* PlayerController)
+{
+	if (!PlayerController || !PlayerController->HasAuthority())
+	{
+		return;
+	}
+
+	if (AMyFpsGameMode* GameMode = PlayerController->GetWorld() ? PlayerController->GetWorld()->GetAuthGameMode<AMyFpsGameMode>() : nullptr)
+	{
+		GameMode->EndHostedGame(PlayerController);
+	}
+
+	ShowHostControlMenu(PlayerController);
 }
 
 FString UMyFpsGameInstance::GetLocalLanAddress() const
@@ -146,8 +169,27 @@ bool UMyFpsGameInstance::ConsumeAutoStartAfterTravel()
 	return bShouldAutoStart;
 }
 
+void UMyFpsGameInstance::RequestHostControlMenuAfterTravel()
+{
+	bHostControlMenuAfterTravelPending = true;
+}
+
+bool UMyFpsGameInstance::ConsumeHostControlMenuAfterTravel()
+{
+	const bool bShouldShowHostControlMenu = bHostControlMenuAfterTravelPending;
+	bHostControlMenuAfterTravelPending = false;
+	return bShouldShowHostControlMenu;
+}
+
 void UMyFpsGameInstance::SetLastLanAddress(const FString& Address)
 {
 	LastLanAddress = Address.IsEmpty() ? TEXT("127.0.0.1") : Address;
+	SaveConfig();
+}
+
+void UMyFpsGameInstance::SetPlayerDisplayName(const FString& InPlayerDisplayName)
+{
+	const FString SanitizedName = InPlayerDisplayName.TrimStartAndEnd().Left(16);
+	PlayerDisplayName = SanitizedName.IsEmpty() ? TEXT("Player") : SanitizedName;
 	SaveConfig();
 }

@@ -244,7 +244,7 @@ protected:
 	void BindToMatchState();
 	void UnbindFromMatchState();
 	void HandleMatchStateChanged();
-	void ToggleLanMenu();
+	void ToggleHostControlMenu();
 
 	FTimerHandle AutoRespawnTimerHandle;
 
