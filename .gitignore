@@ -50,5 +50,8 @@ Saved/Logs/
 # Portfolio notes are local working documents, not repository content.
 Docs/
 
+# Local launch helpers and document generators.
+Script/
+
 # Temporary local helper generated while preparing portfolio documents.
 Docs/generate_portfolio_docs.ps1
