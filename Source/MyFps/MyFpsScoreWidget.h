@@ -7,6 +7,7 @@
 class UProgressBar;
 class UScrollBox;
 class UTextBlock;
+class UVerticalBox;
 
 UCLASS()
 class MYFPS_API UMyFpsScoreWidget : public UUserWidget
@@ -74,6 +75,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
 	FText SwapPromptText = FText::FromString(TEXT("Press E to swap weapon"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Kill Feed")
+	FText KillFeedActionText = FText::FromString(TEXT("击杀了"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Kill Feed")
+	bool bUseBlueprintKillFeedEntries = true;
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD")
 	float CachedScore = 0.0f;
@@ -144,11 +151,26 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> PickupPromptTextBlock = nullptr;
 
-	UPROPERTY(meta = (BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UScrollBox> KillFeedBox = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UScrollBox> KillFeedScrollBox = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UVerticalBox> KillFeedListBox = nullptr;
+
+	UPROPERTY()
+	TArray<FString> LastRenderedKillFeedLines;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
 	void OnHudDataUpdated();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Kill Feed")
+	void OnKillFeedReset();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Kill Feed")
+	void OnKillFeedMessageReceived(const FText& KillerText, const FText& ActionText, const FText& VictimText);
 
 	void BuildDefaultLayout();
 	void RefreshHud();

@@ -178,7 +178,8 @@ void UMyFpsScoreWidget::BuildDefaultLayout()
 	TargetScoreTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TargetScoreTextBlock"));
 	MatchStatusTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("MatchStatusTextBlock"));
 	PickupPromptTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PickupPromptTextBlock"));
-	KillFeedScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("KillFeedScrollBox"));
+	KillFeedBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("KillFeedBox"));
+	KillFeedListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("KillFeedListBox"));
 
 	if (ScoreTextBlock)
 	{
@@ -259,9 +260,14 @@ void UMyFpsScoreWidget::BuildDefaultLayout()
 		}
 	}
 
-	if (KillFeedScrollBox)
+	if (KillFeedBox)
 	{
-		if (UVerticalBoxSlot* KillFeedSlot = RootPanel->AddChildToVerticalBox(KillFeedScrollBox))
+		if (KillFeedListBox)
+		{
+			KillFeedBox->AddChild(KillFeedListBox);
+		}
+
+		if (UVerticalBoxSlot* KillFeedSlot = RootPanel->AddChildToVerticalBox(KillFeedBox))
 		{
 			KillFeedSlot->SetPadding(FMargin(20.0f, 18.0f, 20.0f, 0.0f));
 		}
@@ -368,6 +374,8 @@ void UMyFpsScoreWidget::RefreshHud()
 void UMyFpsScoreWidget::RefreshKillFeed()
 {
 	CachedKillFeedTexts.Reset();
+	TArray<FString> KillFeedLines;
+	TArray<FMyFpsKillFeedMessage> KillFeedMessages;
 
 	APlayerController* PlayerController = GetOwningPlayer();
 	const AMyFpsGameState* GameState = PlayerController && PlayerController->GetWorld()
@@ -377,21 +385,69 @@ void UMyFpsScoreWidget::RefreshKillFeed()
 	{
 		for (const FMyFpsKillFeedMessage& Message : GameState->GetKillFeedMessages())
 		{
-			CachedKillFeedTexts.Add(FText::Format(
-				FText::FromString(TEXT("{0} 击杀了 {1}")),
+			KillFeedMessages.Add(Message);
+			const FText KillFeedText = FText::Format(
+				FText::FromString(TEXT("{0} {1} {2}")),
 				FText::FromString(Message.KillerName),
+				KillFeedActionText,
 				FText::FromString(Message.VictimName)
-			));
+			);
+			CachedKillFeedTexts.Add(KillFeedText);
+			KillFeedLines.Add(KillFeedText.ToString());
 		}
 	}
 
-	if (!KillFeedScrollBox)
+	UScrollBox* TargetKillFeedBox = KillFeedScrollBox ? KillFeedScrollBox.Get() : KillFeedBox.Get();
+	if (bUseBlueprintKillFeedEntries)
+	{
+		if (LastRenderedKillFeedLines == KillFeedLines)
+		{
+			return;
+		}
+
+		LastRenderedKillFeedLines = KillFeedLines;
+		OnKillFeedReset();
+		for (const FMyFpsKillFeedMessage& Message : KillFeedMessages)
+		{
+			OnKillFeedMessageReceived(
+				FText::FromString(Message.KillerName),
+				KillFeedActionText,
+				FText::FromString(Message.VictimName)
+			);
+		}
+
+		if (TargetKillFeedBox)
+		{
+			TargetKillFeedBox->SetVisibility(CachedKillFeedTexts.Num() > 0 ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+		}
+
+		return;
+	}
+
+	if (!TargetKillFeedBox)
 	{
 		return;
 	}
 
-	KillFeedScrollBox->ClearChildren();
-	KillFeedScrollBox->SetVisibility(CachedKillFeedTexts.Num() > 0 ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	if (!KillFeedListBox && WidgetTree)
+	{
+		TargetKillFeedBox->ClearChildren();
+		KillFeedListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("KillFeedListBox"));
+		if (KillFeedListBox)
+		{
+			TargetKillFeedBox->AddChild(KillFeedListBox);
+		}
+	}
+
+	TargetKillFeedBox->SetVisibility(CachedKillFeedTexts.Num() > 0 ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+
+	if (!KillFeedListBox || LastRenderedKillFeedLines == KillFeedLines)
+	{
+		return;
+	}
+
+	LastRenderedKillFeedLines = KillFeedLines;
+	KillFeedListBox->ClearChildren();
 
 	for (const FText& KillFeedText : CachedKillFeedTexts)
 	{
@@ -406,6 +462,9 @@ void UMyFpsScoreWidget::RefreshKillFeed()
 		KillTextBlock->SetText(KillFeedText);
 		KillTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.88f, 0.35f, 1.0f)));
 		KillTextBlock->SetShadowOffset(FVector2D(1.0f, 1.0f));
-		KillFeedScrollBox->AddChild(KillTextBlock);
+		if (UVerticalBoxSlot* KillFeedEntrySlot = KillFeedListBox->AddChildToVerticalBox(KillTextBlock))
+		{
+			KillFeedEntrySlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
+		}
 	}
 }
