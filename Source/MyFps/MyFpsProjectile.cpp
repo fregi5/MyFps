@@ -3,6 +3,9 @@
 #include "MyFpsProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
+#include "MyFpsWeaponDamageLibrary.h"
+#include "MyFpsWeaponDefinition.h"
+
 AMyFpsProjectile::AMyFpsProjectile() 
 {
 	bReplicates = true;
@@ -12,6 +15,7 @@ AMyFpsProjectile::AMyFpsProjectile()
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	CollisionComp->InitSphereRadius(5.0f);
 	CollisionComp->BodyInstance.SetCollisionProfileName("Projectile");
+	CollisionComp->bReturnMaterialOnMove = true;
 	CollisionComp->OnComponentHit.AddDynamic(this, &AMyFpsProjectile::OnHit);		// set up a notification for when this component hits something blocking
 
 	// Players can't walk on it
@@ -38,13 +42,30 @@ void AMyFpsProjectile::SetDamage(float NewDamage)
 	Damage = FMath::Max(0.0f, NewDamage);
 }
 
+void AMyFpsProjectile::SetWeaponDefinition(UMyFpsWeaponDefinition* NewWeaponDefinition, const FVector& NewDamageStartLocation)
+{
+	WeaponDefinition = NewWeaponDefinition;
+	DamageStartLocation = NewDamageStartLocation;
+	if (WeaponDefinition)
+	{
+		Damage = FMath::Max(0.0f, WeaponDefinition->Damage);
+	}
+}
+
 void AMyFpsProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherActor != GetOwner()))
     {
+		const FVector EffectiveDamageStartLocation = DamageStartLocation.IsNearlyZero()
+			? GetActorLocation()
+			: DamageStartLocation;
+		const float FinalDamage = WeaponDefinition
+			? UMyFpsWeaponDamageLibrary::CalculateDamageForHit(WeaponDefinition, Hit, EffectiveDamageStartLocation)
+			: Damage;
+
         UGameplayStatics::ApplyDamage(
             OtherActor,
-            Damage,
+            FinalDamage,
             GetInstigatorController(),
             this,
             UDamageType::StaticClass()

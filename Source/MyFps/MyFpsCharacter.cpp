@@ -14,6 +14,7 @@
 #include "MyFpsWeaponCombatComponent.h"
 #include "MyFpsWeaponDefinition.h"
 #include "MyFpsWeaponInventoryComponent.h"
+#include "MyFpsWeaponRecoilComponent.h"
 #include "MyFpsWeaponViewComponent.h"
 #include "MyFpsWeaponPickupActor.h"
 #include "TP_PickUpComponent.h"
@@ -54,6 +55,7 @@ AMyFpsCharacter::AMyFpsCharacter()
 	WeaponInventoryComponent = CreateDefaultSubobject<UMyFpsWeaponInventoryComponent>(TEXT("WeaponInventoryComponent"));
 	WeaponViewComponent = CreateDefaultSubobject<UMyFpsWeaponViewComponent>(TEXT("WeaponViewComponent"));
 	WeaponCombatComponent = CreateDefaultSubobject<UMyFpsWeaponCombatComponent>(TEXT("WeaponCombatComponent"));
+	WeaponRecoilComponent = CreateDefaultSubobject<UMyFpsWeaponRecoilComponent>(TEXT("WeaponRecoilComponent"));
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
@@ -587,6 +589,10 @@ void AMyFpsCharacter::ApplyDeathState()
 	{
 		WeaponViewComponent->ClearWeaponVisuals();
 	}
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
+	}
 
 	if (DeathWidgetInstance && IsLocallyControlled())
 	{
@@ -774,6 +780,10 @@ bool AMyFpsCharacter::DropInventoryWeapon()
 	if (WeaponCombatComponent)
 	{
 		WeaponCombatComponent->StopFire();
+	}
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
 	}
 
 	AMyFpsWeaponPickupActor* DroppedPickup = SpawnDroppedInventoryWeapon(WeaponDefinition);
@@ -1199,6 +1209,10 @@ void AMyFpsCharacter::HandleMatchFinished()
 	{
 		WeaponCombatComponent->StopFire();
 	}
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
+	}
 
 	SetCrosshairVisible(false);
 
@@ -1231,6 +1245,10 @@ void AMyFpsCharacter::HandleMatchStarted()
 	}
 
 	SetCrosshairVisible(true);
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
+	}
 	RefreshFirstPersonMeshVisibility();
 	if (WeaponViewComponent)
 	{

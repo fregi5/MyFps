@@ -9,8 +9,10 @@
 #include "MyFpsCharacter.h"
 #include "MyFpsProjectile.h"
 #include "MyFpsPlayerController.h"
+#include "MyFpsWeaponDamageLibrary.h"
 #include "MyFpsWeaponDefinition.h"
 #include "MyFpsWeaponInventoryComponent.h"
+#include "MyFpsWeaponRecoilComponent.h"
 #include "MyFpsWeaponViewComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
@@ -31,6 +33,7 @@ void UMyFpsWeaponCombatComponent::BeginPlay()
 	{
 		InventoryComponent = CharacterOwner->GetWeaponInventoryComponent();
 		WeaponViewComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponViewComponent>();
+		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
 	}
 }
 
@@ -88,13 +91,14 @@ void UMyFpsWeaponCombatComponent::StartFire()
 		: nullptr;
 	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
 	{
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
 		GetWorld()->GetTimerManager().SetTimer(
 			AutoFireTimerHandle,
 			this,
 			&UMyFpsWeaponCombatComponent::FireOnce,
-			FMath::Max(0.01f, WeaponDefinition->FireInterval),
+			FireInterval,
 			true,
-			FMath::Max(0.01f, WeaponDefinition->FireInterval)
+			FireInterval
 		);
 	}
 }
@@ -152,6 +156,10 @@ void UMyFpsWeaponCombatComponent::Reload()
 
 	if (!CharacterOwner->HasAuthority())
 	{
+		if (WeaponRecoilComponent)
+		{
+			WeaponRecoilComponent->ResetRecoilState();
+		}
 		ServerReload();
 		return;
 	}
@@ -162,6 +170,10 @@ void UMyFpsWeaponCombatComponent::Reload()
 	}
 
 	StopFire();
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
+	}
 	InventoryComponent->SetReloadingState(true);
 	MulticastReloadCosmetics();
 
@@ -233,6 +245,10 @@ void UMyFpsWeaponCombatComponent::FinishReload()
 	}
 
 	InventoryComponent->FinishReload();
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
+	}
 }
 
 void UMyFpsWeaponCombatComponent::FireOnce()
@@ -265,9 +281,10 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 	{
 		if (AActor* HitActor = HitResult.GetActor())
 		{
+			const float FinalDamage = UMyFpsWeaponDamageLibrary::CalculateDamageForHit(WeaponDefinition, HitResult, ViewLocation);
 			const float ActualDamage = UGameplayStatics::ApplyDamage(
 				HitActor,
-				WeaponDefinition->Damage,
+				FinalDamage,
 				CharacterOwner ? CharacterOwner->GetController() : nullptr,
 				CharacterOwner,
 				UDamageType::StaticClass()
@@ -345,13 +362,14 @@ bool UMyFpsWeaponCombatComponent::TraceAim(
 	}
 
 	const UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent->GetCurrentWeaponDefinition();
-	const float TraceDistance = WeaponDefinition ? WeaponDefinition->HitscanDistance : 100000.0f;
+	const float TraceDistance = WeaponDefinition ? WeaponDefinition->GetTraceDistance() : 100000.0f;
 	const FVector TraceEnd = ViewLocation + ViewRotation.Vector() * TraceDistance;
 
 	static constexpr ECollisionChannel BulletTraceChannel = ECC_GameTraceChannel2;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NewWeaponAimTrace), true, CharacterOwner);
 	QueryParams.AddIgnoredActor(CharacterOwner);
 	QueryParams.bTraceComplex = true;
+	QueryParams.bReturnPhysicalMaterial = true;
 
 	TArray<FHitResult> HitResults;
 	if (GetWorld()->LineTraceMultiByChannel(HitResults, ViewLocation, TraceEnd, BulletTraceChannel, QueryParams))
@@ -418,10 +436,20 @@ void UMyFpsWeaponCombatComponent::MulticastFireCosmetics_Implementation(
 		WeaponViewComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponViewComponent>();
 	}
 
+	if (CharacterOwner && !WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
+	}
+
 	if (WeaponViewComponent)
 	{
 		WeaponViewComponent->PlayFireCosmetics();
 		LocalMuzzleLocation = WeaponViewComponent->GetMuzzleTransform(FallbackRotation).GetLocation();
+	}
+
+	if (WeaponRecoilComponent && InventoryComponent)
+	{
+		WeaponRecoilComponent->ApplyWeaponRecoil(InventoryComponent->GetCurrentWeaponDefinition());
 	}
 
 	SpawnTracerEffect(LocalMuzzleLocation, AimPoint);
@@ -437,6 +465,16 @@ void UMyFpsWeaponCombatComponent::MulticastReloadCosmetics_Implementation()
 	if (CharacterOwner && !WeaponViewComponent)
 	{
 		WeaponViewComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponViewComponent>();
+	}
+
+	if (CharacterOwner && !WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
+	}
+
+	if (WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ResetRecoilState();
 	}
 
 	if (WeaponViewComponent)

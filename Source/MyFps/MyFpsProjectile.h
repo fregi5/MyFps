@@ -9,6 +9,7 @@
 
 class USphereComponent;
 class UProjectileMovementComponent;
+class UMyFpsWeaponDefinition;
 
 UCLASS(config=Game)
 class AMyFpsProjectile : public AActor
@@ -28,6 +29,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Damage")
 	void SetDamage(float NewDamage);
 
+	UFUNCTION(BlueprintCallable, Category = "Damage")
+	void SetWeaponDefinition(UMyFpsWeaponDefinition* NewWeaponDefinition, const FVector& NewDamageStartLocation);
+
 	/** called when projectile hits something */
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
@@ -39,5 +43,11 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage")
     float Damage = 25.0f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMyFpsWeaponDefinition> WeaponDefinition = nullptr;
+
+	UPROPERTY(Transient)
+	FVector DamageStartLocation = FVector::ZeroVector;
 };
 

@@ -22,6 +22,7 @@ class UMyFpsScoreboardWidget;
 class UMyFpsWeaponCombatComponent;
 class UMyFpsWeaponDefinition;
 class UMyFpsWeaponInventoryComponent;
+class UMyFpsWeaponRecoilComponent;
 class UMyFpsWeaponViewComponent;
 class UUserWidget;
 class UTP_PickUpComponent;
@@ -52,6 +53,9 @@ class AMyFpsCharacter : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMyFpsWeaponCombatComponent> WeaponCombatComponent = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMyFpsWeaponRecoilComponent> WeaponRecoilComponent = nullptr;
 
 public:
 	AMyFpsCharacter();
@@ -335,6 +339,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	UMyFpsWeaponInventoryComponent* GetWeaponInventoryComponent() const { return WeaponInventoryComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	UMyFpsWeaponRecoilComponent* GetWeaponRecoilComponent() const { return WeaponRecoilComponent; }
 
 
 };

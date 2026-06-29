@@ -9,6 +9,7 @@
 class AMyFpsCharacter;
 class UMyFpsWeaponDefinition;
 class UMyFpsWeaponInventoryComponent;
+class UMyFpsWeaponRecoilComponent;
 class UMyFpsWeaponViewComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -65,6 +66,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMyFpsWeaponViewComponent> WeaponViewComponent = nullptr;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMyFpsWeaponRecoilComponent> WeaponRecoilComponent = nullptr;
 
 	FTimerHandle AutoFireTimerHandle;
 	FTimerHandle ReloadTimerHandle;

@@ -30,7 +30,11 @@ bool UMyFpsWeaponInventoryComponent::EquipWeaponDefinition(UMyFpsWeaponDefinitio
 	CurrentWeaponState.WeaponId = WeaponDefinition->WeaponId;
 	CurrentWeaponState.DisplayName = WeaponDefinition->DisplayName;
 	CurrentWeaponState.CurrentAmmoInClip = FMath::Max(0, WeaponDefinition->ClipSize);
-	CurrentWeaponState.CurrentReserveAmmo = FMath::Max(0, WeaponDefinition->MaxReserveAmmo);
+	CurrentWeaponState.CurrentReserveAmmo = FMath::Clamp(
+		WeaponDefinition->InitialReserveAmmo,
+		0,
+		FMath::Max(0, WeaponDefinition->MaxReserveAmmo)
+	);
 	CurrentWeaponState.bReloading = false;
 	CurrentWeaponState.bEquipping = false;
 	CurrentWeaponState.bFiring = false;
