@@ -68,6 +68,27 @@ float UMyFpsWeaponDefinition::GetFireInterval() const
 		: FMath::Max(0.01f, FireInterval);
 }
 
+float UMyFpsWeaponDefinition::GetFireCooldown(bool bIncludeBoltAction) const
+{
+	const float BaseCooldown = bAutomaticFire
+		? GetFireInterval()
+		: FMath::Max(0.0f, FireCooldown);
+	if (!bIncludeBoltAction)
+	{
+		return BaseCooldown;
+	}
+
+	const bool bHasBoltAction = BoltActionAnimation != nullptr
+		|| ThirdPersonBoltActionAnimation != nullptr
+		|| BoltActionTime > 0.0f;
+	if (!bHasBoltAction)
+	{
+		return BaseCooldown;
+	}
+
+	return FMath::Max(BaseCooldown, FMath::Max(0.0f, BoltActionDelay) + FMath::Max(0.0f, BoltActionTime));
+}
+
 float UMyFpsWeaponDefinition::GetTraceDistance() const
 {
 	return MaxRange > 0.0f

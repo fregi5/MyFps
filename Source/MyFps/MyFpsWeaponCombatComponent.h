@@ -45,6 +45,8 @@ private:
 	bool GetViewTraceData(FVector& OutViewLocation, FRotator& OutViewRotation) const;
 	bool TraceAim(const FVector& ViewLocation, const FRotator& ViewRotation, FHitResult& OutHitResult, FVector& OutAimPoint) const;
 	FVector GetMuzzleLocation(const FVector& ViewLocation, const FRotator& ViewRotation, const FVector& AimPoint) const;
+	bool ShouldPlayBoltAction(const UMyFpsWeaponDefinition* WeaponDefinition, bool bHasAmmoAfterShot) const;
+	void SpawnProjectile(const UMyFpsWeaponDefinition* WeaponDefinition, const FVector& MuzzleLocation, const FVector& AimPoint) const;
 	void SpawnTracerEffect(const FVector& MuzzleLocation, const FVector& AimPoint) const;
 
 	UFUNCTION(Server, Reliable)
@@ -58,6 +60,9 @@ private:
 
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastFireCosmetics(const FVector_NetQuantize& MuzzleLocation, const FVector_NetQuantize& AimPoint);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastBoltActionCosmetics();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastReloadCosmetics();
@@ -77,4 +82,6 @@ private:
 	FTimerHandle AutoFireTimerHandle;
 	FTimerHandle ReloadTimerHandle;
 	FTimerHandle LocalRecoilTimerHandle;
+	float NextAllowedFireTime = 0.0f;
+	float NextLocalPredictedFireTime = 0.0f;
 };

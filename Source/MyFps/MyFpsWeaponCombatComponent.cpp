@@ -4,7 +4,9 @@
 
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/SphereComponent.h"
 #include "EnemyCharacter.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyFpsCharacter.h"
 #include "MyFpsProjectile.h"
@@ -93,7 +95,7 @@ void UMyFpsWeaponCombatComponent::StartFire()
 		: nullptr;
 	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
 	{
-		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireCooldown(false));
 		GetWorld()->GetTimerManager().SetTimer(
 			AutoFireTimerHandle,
 			this,
@@ -217,7 +219,8 @@ bool UMyFpsWeaponCombatComponent::CanFire() const
 		&& !Character->IsDead()
 		&& Inventory->GetCurrentWeaponDefinition() != nullptr
 		&& Inventory->HasAmmoInClip()
-		&& !Inventory->IsReloading();
+		&& !Inventory->IsReloading()
+		&& (!Character->GetWorld() || Character->GetWorld()->GetTimeSeconds() >= NextAllowedFireTime);
 }
 
 bool UMyFpsWeaponCombatComponent::CanReload() const
@@ -251,7 +254,8 @@ bool UMyFpsWeaponCombatComponent::CanPredictLocalRecoil() const
 		&& Inventory->HasWeapon()
 		&& Inventory->GetCurrentWeaponDefinition() != nullptr
 		&& Inventory->HasAmmoInClip()
-		&& !Inventory->IsReloading();
+		&& !Inventory->IsReloading()
+		&& (!Character->GetWorld() || Character->GetWorld()->GetTimeSeconds() >= NextLocalPredictedFireTime);
 }
 
 void UMyFpsWeaponCombatComponent::StartLocalRecoilPrediction()
@@ -268,7 +272,7 @@ void UMyFpsWeaponCombatComponent::StartLocalRecoilPrediction()
 		: nullptr;
 	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
 	{
-		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireCooldown(false));
 		GetWorld()->GetTimerManager().SetTimer(
 			LocalRecoilTimerHandle,
 			this,
@@ -308,7 +312,14 @@ void UMyFpsWeaponCombatComponent::ApplyPredictedLocalRecoil()
 
 	if (WeaponRecoilComponent && InventoryComponent)
 	{
-		WeaponRecoilComponent->ApplyWeaponRecoil(InventoryComponent->GetCurrentWeaponDefinition());
+		UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent->GetCurrentWeaponDefinition();
+		WeaponRecoilComponent->ApplyWeaponRecoil(WeaponDefinition);
+
+		if (WeaponDefinition && GetWorld())
+		{
+			const bool bWillHaveAmmoAfterShot = InventoryComponent->GetCurrentAmmoInClip() > 1;
+			NextLocalPredictedFireTime = GetWorld()->GetTimeSeconds() + WeaponDefinition->GetFireCooldown(ShouldPlayBoltAction(WeaponDefinition, bWillHaveAmmoAfterShot));
+		}
 	}
 }
 
@@ -346,6 +357,13 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 		return;
 	}
 
+	const bool bHasAmmoAfterShot = InventoryComponent->HasAmmoInClip();
+	const bool bShouldPlayBoltAction = ShouldPlayBoltAction(WeaponDefinition, bHasAmmoAfterShot);
+	if (GetWorld())
+	{
+		NextAllowedFireTime = GetWorld()->GetTimeSeconds() + WeaponDefinition->GetFireCooldown(bShouldPlayBoltAction);
+	}
+
 	if (CharacterOwner && CharacterOwner->IsLocallyControlled() && WeaponRecoilComponent)
 	{
 		WeaponRecoilComponent->ApplyWeaponRecoil(WeaponDefinition);
@@ -370,7 +388,13 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 	FHitResult HitResult;
 	FVector AimPoint = FVector::ZeroVector;
 	const bool bHit = TraceAim(ViewLocation, ViewRotation, HitResult, AimPoint);
-	if (bHit)
+	const FVector MuzzleLocation = GetMuzzleLocation(ViewLocation, ViewRotation, AimPoint);
+
+	if (WeaponDefinition->TraceType == EMyFpsTraceType::Projectile)
+	{
+		SpawnProjectile(WeaponDefinition, MuzzleLocation, AimPoint);
+	}
+	else if (bHit)
 	{
 		if (AActor* HitActor = HitResult.GetActor())
 		{
@@ -410,8 +434,11 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 		}
 	}
 
-	const FVector MuzzleLocation = GetMuzzleLocation(ViewLocation, ViewRotation, AimPoint);
 	MulticastFireCosmetics(MuzzleLocation, AimPoint);
+	if (bShouldPlayBoltAction)
+	{
+		MulticastBoltActionCosmetics();
+	}
 }
 
 bool UMyFpsWeaponCombatComponent::GetViewTraceData(FVector& OutViewLocation, FRotator& OutViewRotation) const
@@ -511,6 +538,63 @@ FVector UMyFpsWeaponCombatComponent::GetMuzzleLocation(
 	return CharacterOwner->GetActorLocation() + ViewRotation.RotateVector(WeaponDefinition->MuzzleOffset);
 }
 
+bool UMyFpsWeaponCombatComponent::ShouldPlayBoltAction(const UMyFpsWeaponDefinition* WeaponDefinition, bool bHasAmmoAfterShot) const
+{
+	return bHasAmmoAfterShot
+		&& WeaponDefinition != nullptr
+		&& (WeaponDefinition->BoltActionAnimation != nullptr
+			|| WeaponDefinition->ThirdPersonBoltActionAnimation != nullptr
+			|| WeaponDefinition->BoltActionTime > 0.0f);
+}
+
+void UMyFpsWeaponCombatComponent::SpawnProjectile(
+	const UMyFpsWeaponDefinition* WeaponDefinition,
+	const FVector& MuzzleLocation,
+	const FVector& AimPoint) const
+{
+	if (!GetWorld() || !WeaponDefinition || !WeaponDefinition->ProjectileClass || !CharacterOwner)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ProjectileWeapon] Spawn failed. Weapon=%s ProjectileClass=%s Character=%s"),
+			*GetNameSafe(WeaponDefinition),
+			WeaponDefinition && WeaponDefinition->ProjectileClass ? *GetNameSafe(WeaponDefinition->ProjectileClass) : TEXT("None"),
+			*GetNameSafe(CharacterOwner));
+		return;
+	}
+
+	const FVector Direction = (AimPoint - MuzzleLocation).GetSafeNormal();
+	const FRotator SpawnRotation = Direction.IsNearlyZero()
+		? CharacterOwner->GetBaseAimRotation()
+		: Direction.Rotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = CharacterOwner;
+	SpawnParams.Instigator = CharacterOwner;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AMyFpsProjectile* Projectile = GetWorld()->SpawnActor<AMyFpsProjectile>(
+		WeaponDefinition->ProjectileClass,
+		MuzzleLocation,
+		SpawnRotation,
+		SpawnParams);
+	if (!Projectile)
+	{
+		return;
+	}
+
+	Projectile->SetWeaponDefinition(const_cast<UMyFpsWeaponDefinition*>(WeaponDefinition), MuzzleLocation);
+	if (USphereComponent* CollisionComp = Projectile->GetCollisionComp())
+	{
+		CollisionComp->IgnoreActorWhenMoving(CharacterOwner, true);
+	}
+
+	if (UProjectileMovementComponent* ProjectileMovement = Projectile->GetProjectileMovement())
+	{
+		const float ProjectileSpeed = FMath::Max(1.0f, ProjectileMovement->InitialSpeed);
+		ProjectileMovement->Velocity = SpawnRotation.Vector() * ProjectileSpeed;
+		ProjectileMovement->UpdateComponentVelocity();
+	}
+}
+
 void UMyFpsWeaponCombatComponent::MulticastFireCosmetics_Implementation(
 	const FVector_NetQuantize& MuzzleLocation,
 	const FVector_NetQuantize& AimPoint)
@@ -536,6 +620,24 @@ void UMyFpsWeaponCombatComponent::MulticastFireCosmetics_Implementation(
 	}
 
 	SpawnTracerEffect(LocalMuzzleLocation, AimPoint);
+}
+
+void UMyFpsWeaponCombatComponent::MulticastBoltActionCosmetics_Implementation()
+{
+	if (!CharacterOwner)
+	{
+		CharacterOwner = Cast<AMyFpsCharacter>(GetOwner());
+	}
+
+	if (CharacterOwner && !WeaponViewComponent)
+	{
+		WeaponViewComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponViewComponent>();
+	}
+
+	if (WeaponViewComponent)
+	{
+		WeaponViewComponent->PlayBoltActionCosmetics();
+	}
 }
 
 void UMyFpsWeaponCombatComponent::MulticastReloadCosmetics_Implementation()

@@ -44,6 +44,8 @@ void UMyFpsWeaponViewComponent::EndPlay(const EEndPlayReason::Type EndPlayReason
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireMontageStopTimerHandle);
+		World->GetTimerManager().ClearTimer(BoltActionDelayTimerHandle);
+		World->GetTimerManager().ClearTimer(BoltActionMontageStopTimerHandle);
 		World->GetTimerManager().ClearTimer(ReloadMontageStopTimerHandle);
 	}
 
@@ -281,6 +283,32 @@ void UMyFpsWeaponViewComponent::PlayFireCosmetics()
 	}
 }
 
+void UMyFpsWeaponViewComponent::PlayBoltActionCosmetics()
+{
+	UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
+		? InventoryComponent->GetCurrentWeaponDefinition()
+		: nullptr;
+	if (!CharacterOwner || !WeaponDefinition || !GetWorld())
+	{
+		return;
+	}
+
+	if (WeaponDefinition->BoltActionDelay > 0.0f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(BoltActionDelayTimerHandle);
+		GetWorld()->GetTimerManager().SetTimer(
+			BoltActionDelayTimerHandle,
+			this,
+			&UMyFpsWeaponViewComponent::PlayDelayedBoltActionCosmetics,
+			WeaponDefinition->BoltActionDelay,
+			false
+		);
+		return;
+	}
+
+	PlayDelayedBoltActionCosmetics();
+}
+
 void UMyFpsWeaponViewComponent::PlayReloadCosmetics()
 {
 	UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
@@ -311,6 +339,37 @@ void UMyFpsWeaponViewComponent::PlayReloadCosmetics()
 			ReloadMontageStopTimerHandle,
 			this,
 			&UMyFpsWeaponViewComponent::StopReloadMontage,
+			StopDelay,
+			false
+		);
+	}
+}
+
+void UMyFpsWeaponViewComponent::PlayDelayedBoltActionCosmetics()
+{
+	UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
+		? InventoryComponent->GetCurrentWeaponDefinition()
+		: nullptr;
+	if (!CharacterOwner || !WeaponDefinition)
+	{
+		return;
+	}
+
+	UAnimMontage* Montage = CharacterOwner->IsLocallyControlled()
+		? WeaponDefinition->BoltActionAnimation
+		: WeaponDefinition->ThirdPersonBoltActionAnimation;
+	const float PlayedDuration = PlayMontage(Montage);
+	const float StopDelay = WeaponDefinition->BoltActionMontageStopDelay > 0.0f
+		? WeaponDefinition->BoltActionMontageStopDelay
+		: PlayedDuration;
+	if (StopDelay > 0.0f && GetWorld())
+	{
+		ActiveBoltActionMontage = Montage;
+		GetWorld()->GetTimerManager().ClearTimer(BoltActionMontageStopTimerHandle);
+		GetWorld()->GetTimerManager().SetTimer(
+			BoltActionMontageStopTimerHandle,
+			this,
+			&UMyFpsWeaponViewComponent::StopBoltActionMontage,
 			StopDelay,
 			false
 		);
@@ -369,6 +428,12 @@ void UMyFpsWeaponViewComponent::StopFireMontage()
 {
 	StopMontage(ActiveFireMontage);
 	ActiveFireMontage = nullptr;
+}
+
+void UMyFpsWeaponViewComponent::StopBoltActionMontage()
+{
+	StopMontage(ActiveBoltActionMontage);
+	ActiveBoltActionMontage = nullptr;
 }
 
 void UMyFpsWeaponViewComponent::StopReloadMontage()

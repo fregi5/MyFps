@@ -33,6 +33,9 @@ public:
 	void PlayFireCosmetics();
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon|View")
+	void PlayBoltActionCosmetics();
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|View")
 	void PlayReloadCosmetics();
 
 protected:
@@ -49,6 +52,8 @@ private:
 	float PlayMontage(UAnimMontage* Montage);
 	void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f) const;
 	void StopFireMontage();
+	void PlayDelayedBoltActionCosmetics();
+	void StopBoltActionMontage();
 	void StopReloadMontage();
 
 	UPROPERTY(Transient)
@@ -69,6 +74,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> ActiveReloadMontage = nullptr;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimMontage> ActiveBoltActionMontage = nullptr;
+
 	FTimerHandle FireMontageStopTimerHandle;
+	FTimerHandle BoltActionDelayTimerHandle;
+	FTimerHandle BoltActionMontageStopTimerHandle;
 	FTimerHandle ReloadMontageStopTimerHandle;
 };

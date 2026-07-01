@@ -119,6 +119,7 @@ public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 
 	float GetFireInterval() const;
+	float GetFireCooldown(bool bIncludeBoltAction) const;
 	float GetTraceDistance() const;
 
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "Recoil|Import")
@@ -177,6 +178,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (ClampMin = "1.0", ForceUnits = "rpm"))
 	float FireRateRPM = 500.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (ClampMin = "0.0", ForceUnits = "s"))
+	float FireCooldown = 0.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Range")
 	float HitscanDistance = 100000.0f;
@@ -271,6 +275,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.0"))
 	float ReloadMontageStopDelay = 0.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.0", ForceUnits = "s"))
+	float BoltActionDelay = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.0", ForceUnits = "s"))
+	float BoltActionTime = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.0"))
+	float BoltActionMontageStopDelay = 0.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Visual")
 	TObjectPtr<USkeletalMesh> FirstPersonWeaponMesh = nullptr;
 
@@ -309,6 +322,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> ThirdPersonFireAnimation = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> BoltActionAnimation = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> ThirdPersonBoltActionAnimation = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> ReloadAnimation = nullptr;
