@@ -9,7 +9,9 @@
 
 class AActor;
 class AMyFpsProjectile;
+class UAnimInstance;
 class UAnimMontage;
+class UBlendSpace;
 class UNiagaraSystem;
 class UPhysicalMaterial;
 class USkeletalMesh;
@@ -18,6 +20,7 @@ class USoundBase;
 UENUM(BlueprintType)
 enum class EMyFpsWeaponType : uint8
 {
+	None UMETA(DisplayName = "None"),
 	AssaultRifle UMETA(DisplayName = "Assault Rifle"),
 	Pistol UMETA(DisplayName = "Pistol"),
 	Shotgun UMETA(DisplayName = "Shotgun"),
@@ -179,8 +182,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (ClampMin = "1.0", ForceUnits = "rpm"))
 	float FireRateRPM = 500.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (ClampMin = "0.0", ForceUnits = "s"))
-	float FireCooldown = 0.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Fire", meta = (ClampMin = "-1.0", ForceUnits = "s"))
+	float FireCooldown = -1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Range")
 	float HitscanDistance = 100000.0f;
@@ -300,7 +303,31 @@ public:
 	FName FirstPersonAttachSocketName = TEXT("WeaponPoint");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName FirstPersonGripSocketName = TEXT("GripSocket");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName FirstPersonLeftHandIKSocketName = TEXT("LeftHandIK");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FVector FirstPersonAttachLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FRotator FirstPersonAttachRotationOffset = FRotator::ZeroRotator;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
 	FName ThirdPersonAttachSocketName = TEXT("Weapon_R");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName ThirdPersonGripSocketName = TEXT("GripSocket");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName ThirdPersonLeftHandIKSocketName = TEXT("LeftHandIK");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FVector ThirdPersonAttachLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FRotator ThirdPersonAttachRotationOffset = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Projectile")
 	FVector MuzzleOffset = FVector(100.0f, 0.0f, 10.0f);
@@ -340,6 +367,24 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> ThirdPersonEquipAnimation = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TSubclassOf<UAnimInstance> FirstPersonAnimClass = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TSubclassOf<UAnimInstance> ThirdPersonAnimClass = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TObjectPtr<UBlendSpace> FirstPersonLocomotionBlendSpace = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TObjectPtr<UBlendSpace> ThirdPersonLocomotionBlendSpace = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TObjectPtr<UBlendSpace> FirstPersonAimOffset = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Pose")
+	TObjectPtr<UBlendSpace> ThirdPersonAimOffset = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "VFX")
 	TObjectPtr<UNiagaraSystem> TracerEffect = nullptr;

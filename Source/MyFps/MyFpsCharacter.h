@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "MyFpsWeaponDefinition.h"
 #include "MyFpsCharacter.generated.h"
 
 class UInputComponent;
@@ -11,6 +12,7 @@ class USkeletalMeshComponent;
 class USceneComponent;
 class UCameraComponent;
 class UAnimMontage;
+class UBlendSpace;
 class USoundBase;
 class UMyFpsDeathWidget;
 class UMyFpsDamageFeedbackWidget;
@@ -104,6 +106,21 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	int32 GetCurrentWeaponFireSequence() const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	UMyFpsWeaponDefinition* GetCurrentWeaponDefinition() const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	EMyFpsWeaponType GetCurrentWeaponType() const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Animation")
+	UBlendSpace* GetCurrentWeaponLocomotionBlendSpace(bool bFirstPerson) const;
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Animation")
+	UBlendSpace* GetCurrentWeaponAimOffset(bool bFirstPerson) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|IK")
+	bool GetCurrentWeaponLeftHandIKTransform(bool bFirstPerson, FTransform& OutTransform) const;
 
 	UFUNCTION(BlueprintPure, Category = "Match")
 	bool IsMatchFinished() const;

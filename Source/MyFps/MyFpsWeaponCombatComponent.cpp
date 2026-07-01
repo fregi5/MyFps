@@ -95,7 +95,7 @@ void UMyFpsWeaponCombatComponent::StartFire()
 		: nullptr;
 	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
 	{
-		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireCooldown(false));
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
 		GetWorld()->GetTimerManager().SetTimer(
 			AutoFireTimerHandle,
 			this,
@@ -214,13 +214,24 @@ bool UMyFpsWeaponCombatComponent::CanFire() const
 		return false;
 	}
 
+	const UMyFpsWeaponDefinition* WeaponDefinition = Inventory->GetCurrentWeaponDefinition();
+	const bool bUsesExplicitFireCooldown = WeaponDefinition
+		&& (WeaponDefinition->FireCooldown >= 0.0f
+			|| WeaponDefinition->BoltActionTime > 0.0f
+			|| WeaponDefinition->BoltActionAnimation != nullptr
+			|| WeaponDefinition->ThirdPersonBoltActionAnimation != nullptr);
+	const bool bFireCooldownReady = WeaponDefinition
+		&& (!bUsesExplicitFireCooldown
+			|| !Character->GetWorld()
+			|| Character->GetWorld()->GetTimeSeconds() >= NextAllowedFireTime);
+
 	return Character->HasAuthority()
 		&& Character->IsMatchInProgress()
 		&& !Character->IsDead()
-		&& Inventory->GetCurrentWeaponDefinition() != nullptr
+		&& WeaponDefinition != nullptr
 		&& Inventory->HasAmmoInClip()
 		&& !Inventory->IsReloading()
-		&& (!Character->GetWorld() || Character->GetWorld()->GetTimeSeconds() >= NextAllowedFireTime);
+		&& bFireCooldownReady;
 }
 
 bool UMyFpsWeaponCombatComponent::CanReload() const
@@ -246,16 +257,27 @@ bool UMyFpsWeaponCombatComponent::CanPredictLocalRecoil() const
 		? InventoryComponent.Get()
 		: (Character ? Character->GetWeaponInventoryComponent() : nullptr);
 
+	const UMyFpsWeaponDefinition* WeaponDefinition = Inventory ? Inventory->GetCurrentWeaponDefinition() : nullptr;
+	const bool bUsesExplicitFireCooldown = WeaponDefinition
+		&& (WeaponDefinition->FireCooldown >= 0.0f
+			|| WeaponDefinition->BoltActionTime > 0.0f
+			|| WeaponDefinition->BoltActionAnimation != nullptr
+			|| WeaponDefinition->ThirdPersonBoltActionAnimation != nullptr);
+	const bool bFireCooldownReady = WeaponDefinition
+		&& (!bUsesExplicitFireCooldown
+			|| !Character->GetWorld()
+			|| Character->GetWorld()->GetTimeSeconds() >= NextLocalPredictedFireTime);
+
 	return Character != nullptr
 		&& Inventory != nullptr
 		&& Character->IsLocallyControlled()
 		&& Character->IsMatchInProgress()
 		&& !Character->IsDead()
 		&& Inventory->HasWeapon()
-		&& Inventory->GetCurrentWeaponDefinition() != nullptr
+		&& WeaponDefinition != nullptr
 		&& Inventory->HasAmmoInClip()
 		&& !Inventory->IsReloading()
-		&& (!Character->GetWorld() || Character->GetWorld()->GetTimeSeconds() >= NextLocalPredictedFireTime);
+		&& bFireCooldownReady;
 }
 
 void UMyFpsWeaponCombatComponent::StartLocalRecoilPrediction()
@@ -272,7 +294,7 @@ void UMyFpsWeaponCombatComponent::StartLocalRecoilPrediction()
 		: nullptr;
 	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
 	{
-		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireCooldown(false));
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
 		GetWorld()->GetTimerManager().SetTimer(
 			LocalRecoilTimerHandle,
 			this,

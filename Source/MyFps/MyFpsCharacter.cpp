@@ -715,6 +715,55 @@ int32 AMyFpsCharacter::GetCurrentWeaponFireSequence() const
 		: 0;
 }
 
+UMyFpsWeaponDefinition* AMyFpsCharacter::GetCurrentWeaponDefinition() const
+{
+	return WeaponInventoryComponent
+		? WeaponInventoryComponent->GetCurrentWeaponDefinition()
+		: nullptr;
+}
+
+EMyFpsWeaponType AMyFpsCharacter::GetCurrentWeaponType() const
+{
+	const UMyFpsWeaponDefinition* WeaponDefinition = GetCurrentWeaponDefinition();
+	return WeaponDefinition
+		? WeaponDefinition->WeaponType
+		: EMyFpsWeaponType::AssaultRifle;
+}
+
+UBlendSpace* AMyFpsCharacter::GetCurrentWeaponLocomotionBlendSpace(bool bFirstPerson) const
+{
+	const UMyFpsWeaponDefinition* WeaponDefinition = GetCurrentWeaponDefinition();
+	if (!WeaponDefinition)
+	{
+		return nullptr;
+	}
+
+	return bFirstPerson
+		? WeaponDefinition->FirstPersonLocomotionBlendSpace
+		: WeaponDefinition->ThirdPersonLocomotionBlendSpace;
+}
+
+UBlendSpace* AMyFpsCharacter::GetCurrentWeaponAimOffset(bool bFirstPerson) const
+{
+	const UMyFpsWeaponDefinition* WeaponDefinition = GetCurrentWeaponDefinition();
+	if (!WeaponDefinition)
+	{
+		return nullptr;
+	}
+
+	return bFirstPerson
+		? WeaponDefinition->FirstPersonAimOffset
+		: WeaponDefinition->ThirdPersonAimOffset;
+}
+
+bool AMyFpsCharacter::GetCurrentWeaponLeftHandIKTransform(bool bFirstPerson, FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+	return WeaponViewComponent
+		? WeaponViewComponent->GetLeftHandIKTransform(bFirstPerson, OutTransform)
+		: false;
+}
+
 bool AMyFpsCharacter::IsMatchFinished() const
 {
 	const AMyFpsGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AMyFpsGameState>() : nullptr;

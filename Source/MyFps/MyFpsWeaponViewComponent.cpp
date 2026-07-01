@@ -4,6 +4,7 @@
 
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimBlueprintGeneratedClass.h"
 #include "Kismet/GameplayStatics.h"
 #include "MyFpsCharacter.h"
 #include "MyFpsWeaponDefinition.h"
@@ -148,10 +149,13 @@ void UMyFpsWeaponViewComponent::ApplyWeaponDefinition(UMyFpsWeaponDefinition* We
 
 		if (USkeletalMeshComponent* Mesh1P = CharacterOwner->GetMesh1P())
 		{
-			FirstPersonWeaponMesh->AttachToComponent(
+			AttachWeaponMeshByGripSocket(
+				FirstPersonWeaponMesh,
 				Mesh1P,
-				FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true),
-				WeaponDefinition->FirstPersonAttachSocketName
+				WeaponDefinition->FirstPersonAttachSocketName,
+				WeaponDefinition->FirstPersonGripSocketName,
+				WeaponDefinition->FirstPersonAttachLocationOffset,
+				WeaponDefinition->FirstPersonAttachRotationOffset
 			);
 			Mesh1P->SetVisibility(bShowFirstPerson, true);
 		}
@@ -168,14 +172,85 @@ void UMyFpsWeaponViewComponent::ApplyWeaponDefinition(UMyFpsWeaponDefinition* We
 
 		if (USkeletalMeshComponent* ThirdPersonMesh = CharacterOwner->GetMesh())
 		{
-			ThirdPersonWeaponMesh->AttachToComponent(
+			AttachWeaponMeshByGripSocket(
+				ThirdPersonWeaponMesh,
 				ThirdPersonMesh,
-				FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true),
-				WeaponDefinition->ThirdPersonAttachSocketName
+				WeaponDefinition->ThirdPersonAttachSocketName,
+				WeaponDefinition->ThirdPersonGripSocketName,
+				WeaponDefinition->ThirdPersonAttachLocationOffset,
+				WeaponDefinition->ThirdPersonAttachRotationOffset
 			);
 		}
 
 		ThirdPersonWeaponMesh->SetVisibility(bShowThirdPerson && ThirdPersonMeshAsset != nullptr, true);
+	}
+
+	ApplyWeaponAnimationClass(WeaponDefinition);
+}
+
+void UMyFpsWeaponViewComponent::AttachWeaponMeshByGripSocket(
+	USkeletalMeshComponent* WeaponMesh,
+	USkeletalMeshComponent* CharacterMesh,
+	FName CharacterSocketName,
+	FName WeaponGripSocketName,
+	const FVector& AttachLocationOffset,
+	const FRotator& AttachRotationOffset) const
+{
+	if (!WeaponMesh || !CharacterMesh)
+	{
+		return;
+	}
+
+	const bool bHasCharacterSocket = CharacterMesh->DoesSocketExist(CharacterSocketName);
+	const bool bHasGripSocket = WeaponMesh->DoesSocketExist(WeaponGripSocketName);
+	if (!bHasCharacterSocket || !bHasGripSocket)
+	{
+		WeaponMesh->AttachToComponent(
+			CharacterMesh,
+			FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true),
+			CharacterSocketName
+		);
+		WeaponMesh->SetRelativeLocationAndRotation(AttachLocationOffset, AttachRotationOffset);
+		return;
+	}
+
+	FTransform TargetSocketTransform = CharacterMesh->GetSocketTransform(CharacterSocketName, RTS_World);
+	const FTransform AttachOffsetTransform(AttachRotationOffset, AttachLocationOffset);
+	TargetSocketTransform = AttachOffsetTransform * TargetSocketTransform;
+
+	const FTransform GripSocketLocalTransform = WeaponMesh->GetSocketTransform(WeaponGripSocketName, RTS_Component);
+	const FTransform DesiredWeaponWorldTransform = GripSocketLocalTransform.Inverse() * TargetSocketTransform;
+
+	WeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	WeaponMesh->SetWorldTransform(DesiredWeaponWorldTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	WeaponMesh->AttachToComponent(
+		CharacterMesh,
+		FAttachmentTransformRules::KeepWorldTransform,
+		CharacterSocketName
+	);
+}
+
+void UMyFpsWeaponViewComponent::ApplyWeaponAnimationClass(UMyFpsWeaponDefinition* WeaponDefinition) const
+{
+	if (!CharacterOwner || !WeaponDefinition)
+	{
+		return;
+	}
+
+	if (USkeletalMeshComponent* Mesh1P = CharacterOwner->GetMesh1P())
+	{
+		if (WeaponDefinition->FirstPersonAnimClass)
+		{
+			Mesh1P->SetAnimInstanceClass(WeaponDefinition->FirstPersonAnimClass);
+		}
+	}
+
+	if (USkeletalMeshComponent* ThirdPersonMesh = CharacterOwner->GetMesh())
+	{
+		if (WeaponDefinition->ThirdPersonAnimClass)
+		{
+			ThirdPersonMesh->SetAnimInstanceClass(WeaponDefinition->ThirdPersonAnimClass);
+		}
 	}
 }
 
@@ -245,6 +320,41 @@ FTransform UMyFpsWeaponViewComponent::GetMuzzleTransform(const FRotator& Fallbac
 		FallbackRotation,
 		CharacterOwner->GetActorLocation() + FallbackRotation.RotateVector(WeaponDefinition->MuzzleOffset)
 	);
+}
+
+bool UMyFpsWeaponViewComponent::GetLeftHandIKTransform(bool bFirstPerson, FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	const UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
+		? InventoryComponent->GetCurrentWeaponDefinition()
+		: nullptr;
+	if (!CharacterOwner || !WeaponDefinition)
+	{
+		return false;
+	}
+
+	const USkeletalMeshComponent* WeaponMesh = bFirstPerson
+		? FirstPersonWeaponMesh.Get()
+		: ThirdPersonWeaponMesh.Get();
+	const USkeletalMeshComponent* AnimationMesh = bFirstPerson
+		? CharacterOwner->GetMesh1P()
+		: CharacterOwner->GetMesh();
+	const FName LeftHandIKSocketName = bFirstPerson
+		? WeaponDefinition->FirstPersonLeftHandIKSocketName
+		: WeaponDefinition->ThirdPersonLeftHandIKSocketName;
+
+	if (!WeaponMesh
+		|| !AnimationMesh
+		|| !WeaponMesh->GetSkeletalMeshAsset()
+		|| !WeaponMesh->DoesSocketExist(LeftHandIKSocketName))
+	{
+		return false;
+	}
+
+	const FTransform SocketWorldTransform = WeaponMesh->GetSocketTransform(LeftHandIKSocketName, RTS_World);
+	OutTransform = SocketWorldTransform.GetRelativeTransform(AnimationMesh->GetComponentTransform());
+	return true;
 }
 
 void UMyFpsWeaponViewComponent::PlayFireCosmetics()

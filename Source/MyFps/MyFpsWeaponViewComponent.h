@@ -29,6 +29,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon|View")
 	FTransform GetMuzzleTransform(const FRotator& FallbackRotation) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Weapon|IK")
+	bool GetLeftHandIKTransform(bool bFirstPerson, FTransform& OutTransform) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Weapon|View")
 	void PlayFireCosmetics();
 
@@ -48,6 +51,14 @@ private:
 
 	void EnsureVisualMeshes();
 	void ApplyWeaponDefinition(UMyFpsWeaponDefinition* WeaponDefinition);
+	void AttachWeaponMeshByGripSocket(
+		USkeletalMeshComponent* WeaponMesh,
+		USkeletalMeshComponent* CharacterMesh,
+		FName CharacterSocketName,
+		FName WeaponGripSocketName,
+		const FVector& AttachLocationOffset,
+		const FRotator& AttachRotationOffset) const;
+	void ApplyWeaponAnimationClass(UMyFpsWeaponDefinition* WeaponDefinition) const;
 	void DestroyVisualMeshes();
 	float PlayMontage(UAnimMontage* Montage);
 	void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f) const;

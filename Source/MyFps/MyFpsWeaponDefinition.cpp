@@ -70,9 +70,9 @@ float UMyFpsWeaponDefinition::GetFireInterval() const
 
 float UMyFpsWeaponDefinition::GetFireCooldown(bool bIncludeBoltAction) const
 {
-	const float BaseCooldown = bAutomaticFire
-		? GetFireInterval()
-		: FMath::Max(0.0f, FireCooldown);
+	const float BaseCooldown = FireCooldown >= 0.0f
+		? FireCooldown
+		: (bAutomaticFire ? GetFireInterval() : 0.0f);
 	if (!bIncludeBoltAction)
 	{
 		return BaseCooldown;
