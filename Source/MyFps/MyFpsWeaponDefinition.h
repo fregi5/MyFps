@@ -68,8 +68,11 @@ struct FMyFpsRecoilPatternShot
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0"))
-	int32 ShotIndex = 0;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "1"))
+	int32 StartShot = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "1"))
+	int32 EndShot = 1;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil")
 	float PitchUp = 0.0f;
@@ -86,11 +89,11 @@ struct FMyFpsRecoilPatternShot
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.0"))
 	float SpreadAdd = 0.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.0", ForceUnits = "s"))
-	float RecoveryDelay = 0.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "-1.0", ForceUnits = "s"))
+	float RecoveryDelay = -1.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.0"))
-	float RecoverySpeed = 0.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "-1.0"))
+	float RecoverySpeed = -1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.0"))
 	float CameraShakeScale = 1.0f;
@@ -117,6 +120,12 @@ public:
 
 	float GetFireInterval() const;
 	float GetTraceDistance() const;
+
+	UFUNCTION(CallInEditor, BlueprintCallable, Category = "Recoil|Import")
+	bool ImportRecoilPatternFromCsv();
+
+	UFUNCTION(BlueprintCallable, Category = "Recoil|Import")
+	bool ImportRecoilPatternFromCsvPath(const FString& CsvFilePath);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Identity")
 	FName WeaponId = TEXT("Rifle");
@@ -223,6 +232,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.0"))
 	float RecoilRecoverySpeed = 0.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil", meta = (ClampMin = "0.01"))
+	float RecoilKickSpeed = 30.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil|Pattern")
 	bool bUseRecoilPattern = true;
 
@@ -231,6 +243,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil|Pattern")
 	TArray<FMyFpsRecoilPatternShot> RecoilPatternShots;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Recoil|Import", meta = (FilePathFilter = "csv"))
+	FFilePath RecoilPatternCsvFile;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spread", meta = (ClampMin = "0.0"))
 	float HipSpreadStanding = 0.0f;

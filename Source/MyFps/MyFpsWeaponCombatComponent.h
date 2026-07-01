@@ -36,8 +36,12 @@ protected:
 private:
 	bool CanFire() const;
 	bool CanReload() const;
+	bool CanPredictLocalRecoil() const;
 	void FireOnce();
 	void FinishReload();
+	void StartLocalRecoilPrediction();
+	void StopLocalRecoilPrediction();
+	void ApplyPredictedLocalRecoil();
 	bool GetViewTraceData(FVector& OutViewLocation, FRotator& OutViewRotation) const;
 	bool TraceAim(const FVector& ViewLocation, const FRotator& ViewRotation, FHitResult& OutHitResult, FVector& OutAimPoint) const;
 	FVector GetMuzzleLocation(const FVector& ViewLocation, const FRotator& ViewRotation, const FVector& AimPoint) const;
@@ -72,4 +76,5 @@ private:
 
 	FTimerHandle AutoFireTimerHandle;
 	FTimerHandle ReloadTimerHandle;
+	FTimerHandle LocalRecoilTimerHandle;
 };

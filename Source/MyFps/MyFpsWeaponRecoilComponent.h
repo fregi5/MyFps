@@ -62,6 +62,7 @@ protected:
 	bool bInvertPitchInputForViewKick = true;
 
 private:
+	void ApplyQueuedRecoil(float DeltaTime);
 	void RecoverRecoil(float DeltaTime);
 	void CheckWeaponChanged();
 	void RecoverAllRecoilImmediately();
@@ -81,4 +82,7 @@ private:
 	float CurrentRecoverySpeed = 0.0f;
 	float PendingPitchRecovery = 0.0f;
 	float PendingYawRecovery = 0.0f;
+	float QueuedPitchKick = 0.0f;
+	float QueuedYawKick = 0.0f;
+	float CurrentKickSpeed = 0.0f;
 };

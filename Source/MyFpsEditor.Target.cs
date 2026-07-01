@@ -12,5 +12,6 @@ public class MyFpsEditorTarget : TargetRules
 		CppStandard = CppStandardVersion.Cpp20;
 
 		ExtraModuleNames.Add("MyFps");
+		ExtraModuleNames.Add("MyFpsEditor");
 	}
 }

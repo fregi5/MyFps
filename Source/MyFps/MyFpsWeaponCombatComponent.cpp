@@ -43,6 +43,7 @@ void UMyFpsWeaponCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
 	{
 		World->GetTimerManager().ClearTimer(AutoFireTimerHandle);
 		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+		World->GetTimerManager().ClearTimer(LocalRecoilTimerHandle);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -62,6 +63,7 @@ void UMyFpsWeaponCombatComponent::StartFire()
 
 	if (!CharacterOwner->HasAuthority())
 	{
+		StartLocalRecoilPrediction();
 		ServerStartFire();
 		return;
 	}
@@ -117,6 +119,7 @@ void UMyFpsWeaponCombatComponent::StopFire()
 
 	if (!CharacterOwner->HasAuthority())
 	{
+		StopLocalRecoilPrediction();
 		ServerStopFire();
 		return;
 	}
@@ -156,6 +159,7 @@ void UMyFpsWeaponCombatComponent::Reload()
 
 	if (!CharacterOwner->HasAuthority())
 	{
+		StopLocalRecoilPrediction();
 		if (WeaponRecoilComponent)
 		{
 			WeaponRecoilComponent->ResetRecoilState();
@@ -232,6 +236,82 @@ bool UMyFpsWeaponCombatComponent::CanReload() const
 		&& Inventory->CanReload();
 }
 
+bool UMyFpsWeaponCombatComponent::CanPredictLocalRecoil() const
+{
+	const AMyFpsCharacter* Character = CharacterOwner ? CharacterOwner.Get() : Cast<AMyFpsCharacter>(GetOwner());
+	const UMyFpsWeaponInventoryComponent* Inventory = InventoryComponent
+		? InventoryComponent.Get()
+		: (Character ? Character->GetWeaponInventoryComponent() : nullptr);
+
+	return Character != nullptr
+		&& Inventory != nullptr
+		&& Character->IsLocallyControlled()
+		&& Character->IsMatchInProgress()
+		&& !Character->IsDead()
+		&& Inventory->HasWeapon()
+		&& Inventory->GetCurrentWeaponDefinition() != nullptr
+		&& Inventory->HasAmmoInClip()
+		&& !Inventory->IsReloading();
+}
+
+void UMyFpsWeaponCombatComponent::StartLocalRecoilPrediction()
+{
+	if (!CanPredictLocalRecoil())
+	{
+		return;
+	}
+
+	ApplyPredictedLocalRecoil();
+
+	const UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
+		? InventoryComponent->GetCurrentWeaponDefinition()
+		: nullptr;
+	if (WeaponDefinition && WeaponDefinition->bAutomaticFire && GetWorld())
+	{
+		const float FireInterval = FMath::Max(0.01f, WeaponDefinition->GetFireInterval());
+		GetWorld()->GetTimerManager().SetTimer(
+			LocalRecoilTimerHandle,
+			this,
+			&UMyFpsWeaponCombatComponent::ApplyPredictedLocalRecoil,
+			FireInterval,
+			true,
+			FireInterval
+		);
+	}
+}
+
+void UMyFpsWeaponCombatComponent::StopLocalRecoilPrediction()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalRecoilTimerHandle);
+	}
+}
+
+void UMyFpsWeaponCombatComponent::ApplyPredictedLocalRecoil()
+{
+	if (!CanPredictLocalRecoil())
+	{
+		StopLocalRecoilPrediction();
+		return;
+	}
+
+	if (!CharacterOwner)
+	{
+		CharacterOwner = Cast<AMyFpsCharacter>(GetOwner());
+	}
+
+	if (CharacterOwner && !WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
+	}
+
+	if (WeaponRecoilComponent && InventoryComponent)
+	{
+		WeaponRecoilComponent->ApplyWeaponRecoil(InventoryComponent->GetCurrentWeaponDefinition());
+	}
+}
+
 void UMyFpsWeaponCombatComponent::FinishReload()
 {
 	if (!CharacterOwner)
@@ -264,6 +344,19 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 	{
 		StopFire();
 		return;
+	}
+
+	if (CharacterOwner && CharacterOwner->IsLocallyControlled() && WeaponRecoilComponent)
+	{
+		WeaponRecoilComponent->ApplyWeaponRecoil(WeaponDefinition);
+	}
+	else if (CharacterOwner && CharacterOwner->IsLocallyControlled())
+	{
+		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
+		if (WeaponRecoilComponent)
+		{
+			WeaponRecoilComponent->ApplyWeaponRecoil(WeaponDefinition);
+		}
 	}
 
 	FVector ViewLocation = FVector::ZeroVector;
@@ -436,20 +529,10 @@ void UMyFpsWeaponCombatComponent::MulticastFireCosmetics_Implementation(
 		WeaponViewComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponViewComponent>();
 	}
 
-	if (CharacterOwner && !WeaponRecoilComponent)
-	{
-		WeaponRecoilComponent = CharacterOwner->FindComponentByClass<UMyFpsWeaponRecoilComponent>();
-	}
-
 	if (WeaponViewComponent)
 	{
 		WeaponViewComponent->PlayFireCosmetics();
 		LocalMuzzleLocation = WeaponViewComponent->GetMuzzleTransform(FallbackRotation).GetLocation();
-	}
-
-	if (WeaponRecoilComponent && InventoryComponent)
-	{
-		WeaponRecoilComponent->ApplyWeaponRecoil(InventoryComponent->GetCurrentWeaponDefinition());
 	}
 
 	SpawnTracerEffect(LocalMuzzleLocation, AimPoint);
