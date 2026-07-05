@@ -14,7 +14,6 @@ public class MyFpsEditor : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"UMG",
-			"Blutility",
 			"MyFps"
 		});
 
@@ -22,12 +21,10 @@ public class MyFpsEditor : ModuleRules
 		{
 			"Slate",
 			"SlateCore",
+			"Blutility",
 			"UnrealEd"
 		});
 
-		PublicIncludePaths.AddRange(new string[]
-		{
-			"MyFps"
-		});
+		PrivateIncludePaths.AddRange(new string[] { System.IO.Path.GetFullPath(Target.RelativeEnginePath) + "Source/Editor/Blutility/Private" });
 	}
 }
