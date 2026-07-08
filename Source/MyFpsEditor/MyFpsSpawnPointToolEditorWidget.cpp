@@ -220,9 +220,132 @@ int32 UMyFpsSpawnPointToolEditorWidget::GenerateEnemySpawnPoints()
 
 int32 UMyFpsSpawnPointToolEditorWidget::ValidateGeneratedSpawnPoints()
 {
-	// TODO: 后续补充真正校验逻辑，并把非法点选中。
-	SetStatusText(FText::FromString(TEXT("Validate spawn points is not implemented yet.")));
-	return 0;
+	UWorld* World = GetEditorWorld();
+	if (!World || !GEditor)
+	{
+		SetStatusText(FText::FromString(TEXT("Validate failed: editor world is missing.")));
+		return 0;
+	}
+
+	const TArray<AActor*> GeneratedActors = GetGeneratedSpawnPointActors(World);
+	TArray<AActor*> InvalidActors;
+	int32 MissingConfigCount = 0;
+	int32 NotGroundedCount = 0;
+	int32 TooCloseCount = 0;
+	int32 UnknownTypeCount = 0;
+
+	// 检查 1：刷新点配置是否完整。武器点必须有 WeaponDefinition，敌人点必须有 EnemyActorClass。
+	for (AActor* Actor : GeneratedActors)
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		bool bHasValidType = false;
+		if (AMyFpsWeaponSpawnPoint* WeaponSpawnPoint = Cast<AMyFpsWeaponSpawnPoint>(Actor))
+		{
+			bHasValidType = true;
+			if (!WeaponSpawnPoint->GetWeaponDefinition())
+			{
+				InvalidActors.AddUnique(Actor);
+				++MissingConfigCount;
+			}
+		}
+
+		if (AMyFpsEnemySpawnPoint* EnemySpawnPoint = Cast<AMyFpsEnemySpawnPoint>(Actor))
+		{
+			bHasValidType = true;
+			if (!EnemySpawnPoint->GetEnemyActorClass())
+			{
+				InvalidActors.AddUnique(Actor);
+				++MissingConfigCount;
+			}
+		}
+
+		if (!bHasValidType)
+		{
+			InvalidActors.AddUnique(Actor);
+			++UnknownTypeCount;
+		}
+	}
+
+	// 检查 2：刷新点是否贴近地面。这里不要求完全等于地面高度，给 50cm 容差，避免斜坡和模型表面误判。
+	constexpr float GroundCheckUpDistance = 50.0f;
+	constexpr float GroundCheckDownDistance = 120.0f;
+	constexpr float GroundTolerance = 50.0f;
+	for (AActor* Actor : GeneratedActors)
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		const FVector ActorLocation = Actor->GetActorLocation();
+		const FVector TraceStart = ActorLocation + FVector::UpVector * GroundCheckUpDistance;
+		const FVector TraceEnd = ActorLocation - FVector::UpVector * GroundCheckDownDistance;
+
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(MyFpsSpawnPointToolValidateGroundTrace), false);
+		QueryParams.AddIgnoredActor(Actor);
+		const bool bHitGround = World->LineTraceSingleByChannel(
+			HitResult,
+			TraceStart,
+			TraceEnd,
+			ECC_Visibility,
+			QueryParams);
+
+		if (!bHitGround || FMath::Abs(HitResult.ImpactPoint.Z - ActorLocation.Z) > GroundTolerance)
+		{
+			InvalidActors.AddUnique(Actor);
+			++NotGroundedCount;
+		}
+	}
+
+	// 检查 3：刷新点之间是否小于最小间距。这里使用 2D 距离，和生成阶段的避让规则保持一致。
+	const float MinDistanceSquared = FMath::Square(FMath::Max(0.0f, MinDistanceBetweenPoints));
+	for (int32 IndexA = 0; IndexA < GeneratedActors.Num(); ++IndexA)
+	{
+		AActor* ActorA = GeneratedActors[IndexA];
+		if (!ActorA)
+		{
+			continue;
+		}
+
+		for (int32 IndexB = IndexA + 1; IndexB < GeneratedActors.Num(); ++IndexB)
+		{
+			AActor* ActorB = GeneratedActors[IndexB];
+			if (!ActorB)
+			{
+				continue;
+			}
+
+			if (FVector::DistSquared2D(ActorA->GetActorLocation(), ActorB->GetActorLocation()) < MinDistanceSquared)
+			{
+				InvalidActors.AddUnique(ActorA);
+				InvalidActors.AddUnique(ActorB);
+				++TooCloseCount;
+			}
+		}
+	}
+
+	// 校验结果直接反映到编辑器选择集：有问题就选中问题点，没有问题就保留一个清晰状态提示。
+	GEditor->SelectNone(false, true);
+	for (AActor* InvalidActor : InvalidActors)
+	{
+		GEditor->SelectActor(InvalidActor, true, false);
+	}
+	GEditor->NoteSelectionChange();
+
+	SetStatusText(FText::Format(
+		FText::FromString(TEXT("Validated {0} spawn points. Invalid={1}. MissingConfig={2}, NotGrounded={3}, TooClosePairs={4}, UnknownType={5}.")),
+		FText::AsNumber(GeneratedActors.Num()),
+		FText::AsNumber(InvalidActors.Num()),
+		FText::AsNumber(MissingConfigCount),
+		FText::AsNumber(NotGroundedCount),
+		FText::AsNumber(TooCloseCount),
+		FText::AsNumber(UnknownTypeCount)));
+	return InvalidActors.Num();
 }
 
 int32 UMyFpsSpawnPointToolEditorWidget::GenerateSpawnPointsFromDefinition()
