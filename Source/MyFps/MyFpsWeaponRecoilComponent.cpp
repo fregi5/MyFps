@@ -161,13 +161,21 @@ void UMyFpsWeaponRecoilComponent::ApplyWeaponRecoilWithAmmoModifier(
 
 void UMyFpsWeaponRecoilComponent::ResetRecoilState()
 {
-	RecoverAllRecoilImmediately();
 	ResetShotIndex();
-	RecoveryStartTime = 0.0f;
-	CurrentRecoverySpeed = 0.0f;
+
+	// 重置连射时不再瞬间拉回视角，只跳过恢复等待时间，让准心按恢复速度自然回正。
+	RecoveryStartTime = GetWorldTimeSeconds();
+	if (CurrentRecoverySpeed <= 0.0f)
+	{
+		const UMyFpsWeaponDefinition* WeaponDefinition = InventoryComponent
+			? InventoryComponent->GetCurrentWeaponDefinition()
+			: nullptr;
+		CurrentRecoverySpeed = WeaponDefinition
+			? FMath::Max(0.0f, WeaponDefinition->RecoilRecoverySpeed)
+			: 0.0f;
+	}
+
 	CurrentKickSpeed = 0.0f;
-	PendingPitchRecovery = 0.0f;
-	PendingYawRecovery = 0.0f;
 	QueuedPitchKick = 0.0f;
 	QueuedYawKick = 0.0f;
 }

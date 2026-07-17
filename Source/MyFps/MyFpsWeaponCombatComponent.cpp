@@ -461,6 +461,12 @@ void UMyFpsWeaponCombatComponent::FireOnce()
 	{
 		MulticastBoltActionCosmetics();
 	}
+
+	// 这一枪打空弹匣后，如果还有备用弹药，直接进入换弹流程。
+	if (!InventoryComponent->HasAmmoInClip() && InventoryComponent->CanReload())
+	{
+		Reload();
+	}
 }
 
 bool UMyFpsWeaponCombatComponent::GetViewTraceData(FVector& OutViewLocation, FRotator& OutViewRotation) const

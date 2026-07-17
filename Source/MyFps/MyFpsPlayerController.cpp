@@ -110,6 +110,7 @@ void AMyFpsPlayerController::ApplySavedPlayerDisplayName()
 		ServerSetPlayerDisplayName(PlayerDisplayName);
 	}
 }
+
 void AMyFpsPlayerController::BeginPlay()
 {
 	Super::BeginPlay();

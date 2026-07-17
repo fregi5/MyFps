@@ -19,6 +19,7 @@ class UMyFpsDamageFeedbackWidget;
 class UMyFpsGameInstance;
 class UMyFpsHitMarkerWidget;
 class UMyFpsMatchResultWidget;
+class UMyFpsNetworkDebugWidget;
 class UMyFpsScoreWidget;
 class UMyFpsScoreboardWidget;
 class UMyFpsWeaponCombatComponent;
@@ -200,6 +201,12 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMyFpsDamageFeedbackWidget> DamageFeedbackWidgetInstance = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UMyFpsNetworkDebugWidget> NetworkDebugWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UMyFpsNetworkDebugWidget> NetworkDebugWidgetInstance = nullptr;
+
 	UPROPERTY()
 	TObjectPtr<UTP_PickUpComponent> AvailablePickup = nullptr;
 
@@ -229,6 +236,38 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Drop")
 	float DroppedWeaponUpImpulse = 60.0f;
 
+	// 未持枪时，正向移动的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float UnarmedForwardSpeed = 600.0f;
+
+	// 未持枪时，后退移动的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float UnarmedBackwardSpeed = 420.0f;
+
+	// 未持枪时，纯左右横移的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float UnarmedStrafeSpeed = 500.0f;
+
+	// 持枪时，正向移动的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float ArmedForwardSpeed = 520.0f;
+
+	// 持枪时，后退移动的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float ArmedBackwardSpeed = 340.0f;
+
+	// 持枪时，纯左右横移的目标速度。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ForceUnits = "cm/s"))
+	float ArmedStrafeSpeed = 430.0f;
+
+	// 斜向移动时，在前/后速度与横移速度之间插值后的整体倍率，用于避免斜向手感过快。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DiagonalSpeedScale = 0.92f;
+
+	// MaxWalkSpeed 向目标方向速度过渡的插值速度，数值越大变化越快。
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Directional Speed", meta = (ClampMin = "0.0"))
+	float MovementSpeedInterpolationRate = 10.0f;
+
 	UFUNCTION()
 	void OnRep_Health();
 
@@ -249,6 +288,7 @@ protected:
 	void CreateCrosshairWidget();
 	void CreateHitMarkerWidget();
 	void CreateDamageFeedbackWidget();
+	void CreateNetworkDebugWidget();
 	void SetCrosshairVisible(bool bVisible);
 	void ShowScoreboard();
 	void HideScoreboard();
@@ -266,6 +306,10 @@ protected:
 	void UnbindFromMatchState();
 	void HandleMatchStateChanged();
 	void ToggleHostControlMenu();
+	void ToggleNetworkDebugWidget();
+	void UpdateDirectionalMovementSpeed(float DeltaSeconds);
+	float CalculateTargetDirectionalSpeed() const;
+	FRotator GetMovementControlYawRotation() const;
 
 	FTimerHandle AutoRespawnTimerHandle;
 
@@ -334,6 +378,10 @@ protected:
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
+
+	// 缓存当前帧移动输入轴，用于根据输入方向计算目标移动速度。
+	float CachedMoveForwardInput = 0.0f;
+	float CachedMoveRightInput = 0.0f;
 	
 protected:
 	// APawn interface

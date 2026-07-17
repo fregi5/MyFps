@@ -17,8 +17,22 @@ float UMyFpsWeaponDamageLibrary::CalculateDamageForHit(
 	const float BodyPartMultiplier = GetBodyPartDamageMultiplier(WeaponDefinition, HitResult);
 	const float HitDistance = FVector::Dist(DamageStartLocation, HitResult.ImpactPoint);
 	const float RangeMultiplier = GetRangeDamageMultiplier(WeaponDefinition, HitDistance);
+	const float FinalDamage = FMath::Max(0.0f, WeaponDefinition->Damage * BodyPartMultiplier * RangeMultiplier);
 
-	return FMath::Max(0.0f, WeaponDefinition->Damage * BodyPartMultiplier * RangeMultiplier);
+	UE_LOG(LogTemp, Warning,
+		TEXT("[DamageCalc] Weapon=%s Target=%s Component=%s Bone=%s PhysMat=%s Base=%.1f BodyMul=%.2f Range=%.0f RangeMul=%.2f Final=%.1f"),
+		*GetNameSafe(WeaponDefinition),
+		*GetNameSafe(HitResult.GetActor()),
+		*GetNameSafe(HitResult.GetComponent()),
+		*HitResult.BoneName.ToString(),
+		*GetNameSafe(HitResult.PhysMaterial.Get()),
+		WeaponDefinition->Damage,
+		BodyPartMultiplier,
+		HitDistance,
+		RangeMultiplier,
+		FinalDamage);
+
+	return FinalDamage;
 }
 
 float UMyFpsWeaponDamageLibrary::GetBodyPartDamageMultiplier(

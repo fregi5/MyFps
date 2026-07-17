@@ -9,6 +9,7 @@
 #include "MyFpsGameState.h"
 #include "MyFpsHitMarkerWidget.h"
 #include "MyFpsMatchResultWidget.h"
+#include "MyFpsNetworkDebugWidget.h"
 #include "MyFpsPlayerController.h"
 #include "MyFpsScoreWidget.h"
 #include "MyFpsWeaponCombatComponent.h"
@@ -77,6 +78,7 @@ AMyFpsCharacter::AMyFpsCharacter()
 	MatchResultWidgetClass = UMyFpsMatchResultWidget::StaticClass();
 	ScoreWidgetClass = UMyFpsScoreWidget::StaticClass();
 	ScoreboardWidgetClass = UMyFpsScoreboardWidget::StaticClass();
+	NetworkDebugWidgetClass = UMyFpsNetworkDebugWidget::StaticClass();
 
 }
 
@@ -152,6 +154,12 @@ void AMyFpsCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		DamageFeedbackWidgetInstance = nullptr;
 	}
 
+	if (NetworkDebugWidgetInstance)
+	{
+		NetworkDebugWidgetInstance->RemoveFromParent();
+		NetworkDebugWidgetInstance = nullptr;
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -196,6 +204,7 @@ void AMyFpsCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	BindToMatchState();
+	UpdateDirectionalMovementSpeed(DeltaSeconds);
 	UpdateFocusedWeaponHighlight();
 }
 
@@ -293,6 +302,7 @@ PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyFpsCharacter:
 	PlayerInputComponent->BindKey(EKeys::Tab, IE_Released, this, &AMyFpsCharacter::HideScoreboard);
 	PlayerInputComponent->BindKey(EKeys::R, IE_Pressed, this, &AMyFpsCharacter::RespawnInput);
 	PlayerInputComponent->BindKey(EKeys::F6, IE_Pressed, this, &AMyFpsCharacter::ToggleHostControlMenu);
+	PlayerInputComponent->BindKey(EKeys::F7, IE_Pressed, this, &AMyFpsCharacter::ToggleNetworkDebugWidget);
 }
 
 void AMyFpsCharacter::ToggleHostControlMenu()
@@ -386,6 +396,7 @@ void AMyFpsCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVecto
 
 void AMyFpsCharacter::MoveForward(float Value)
 {
+	CachedMoveForwardInput = Value;
 	if (bIsDead || IsMatchFinished())
 	{
 		return;
@@ -393,13 +404,45 @@ void AMyFpsCharacter::MoveForward(float Value)
 
 	if (Value != 0.0f)
 	{
-		// add movement in that direction
-		AddMovementInput(GetActorForwardVector(), Value);
+		// 移动方向跟随控制器/摄像机 Yaw，而不是直接使用角色朝向，保证输入方向和视角判断一致。
+		const FRotator MovementYawRotation = GetMovementControlYawRotation();
+		AddMovementInput(FRotationMatrix(MovementYawRotation).GetUnitAxis(EAxis::X), Value);
+	}
+}
+
+void AMyFpsCharacter::ToggleNetworkDebugWidget()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] F7 pressed. Character=%s Controller=%s Local=%d Class=%s Instance=%s"),
+		*GetNameSafe(this),
+		*GetNameSafe(PlayerController),
+		PlayerController ? PlayerController->IsLocalController() : false,
+		*GetNameSafe(NetworkDebugWidgetClass),
+		*GetNameSafe(NetworkDebugWidgetInstance));
+
+	CreateNetworkDebugWidget();
+	if (!NetworkDebugWidgetInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] Widget instance is null after CreateNetworkDebugWidget."));
+		return;
+	}
+
+	const bool bShouldShow = NetworkDebugWidgetInstance->GetVisibility() != ESlateVisibility::Visible;
+	NetworkDebugWidgetInstance->SetVisibility(bShouldShow ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] Widget visibility changed. Show=%d Widget=%s Visibility=%d"),
+		bShouldShow,
+		*GetNameSafe(NetworkDebugWidgetInstance),
+		static_cast<int32>(NetworkDebugWidgetInstance->GetVisibility()));
+
+	if (bShouldShow)
+	{
+		NetworkDebugWidgetInstance->RefreshNetworkDebugText();
 	}
 }
 
 void AMyFpsCharacter::MoveRight(float Value)
 {
+	CachedMoveRightInput = Value;
 	if (bIsDead || IsMatchFinished())
 	{
 		return;
@@ -407,9 +450,72 @@ void AMyFpsCharacter::MoveRight(float Value)
 
 	if (Value != 0.0f)
 	{
-		// add movement in that direction
-		AddMovementInput(GetActorRightVector(), Value);
+		// 右移方向同样使用控制器/摄像机 Yaw，避免角色朝向和视角不一致时速度分类出错。
+		const FRotator MovementYawRotation = GetMovementControlYawRotation();
+		AddMovementInput(FRotationMatrix(MovementYawRotation).GetUnitAxis(EAxis::Y), Value);
 	}
+}
+
+void AMyFpsCharacter::UpdateDirectionalMovementSpeed(float DeltaSeconds)
+{
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent)
+	{
+		return;
+	}
+
+	const float TargetSpeed = CalculateTargetDirectionalSpeed();
+	const float InterpRate = FMath::Max(0.0f, MovementSpeedInterpolationRate);
+	MovementComponent->MaxWalkSpeed = FMath::FInterpTo(
+		MovementComponent->MaxWalkSpeed,
+		TargetSpeed,
+		DeltaSeconds,
+		InterpRate);
+}
+
+float AMyFpsCharacter::CalculateTargetDirectionalSpeed() const
+{
+	const bool bHasWeapon = HasWeaponEquipped();
+	const float ForwardSpeed = bHasWeapon ? ArmedForwardSpeed : UnarmedForwardSpeed;
+	const float BackwardSpeed = bHasWeapon ? ArmedBackwardSpeed : UnarmedBackwardSpeed;
+	const float StrafeSpeed = bHasWeapon ? ArmedStrafeSpeed : UnarmedStrafeSpeed;
+
+	const float ForwardInput = FMath::Clamp(CachedMoveForwardInput, -1.0f, 1.0f);
+	const float RightInput = FMath::Clamp(CachedMoveRightInput, -1.0f, 1.0f);
+	const float AbsForward = FMath::Abs(ForwardInput);
+	const float AbsRight = FMath::Abs(RightInput);
+
+	// 没有移动输入时仍保留当前持枪状态下的正向速度，避免重新起步时从 0 速度插值。
+	if (AbsForward <= KINDA_SMALL_NUMBER && AbsRight <= KINDA_SMALL_NUMBER)
+	{
+		return ForwardSpeed;
+	}
+
+	// 前后方向速度不一样：例如 FPS 中后退通常比前进慢。
+	const float ForwardOrBackwardSpeed = ForwardInput < -KINDA_SMALL_NUMBER
+		? BackwardSpeed
+		: ForwardSpeed;
+
+	if (AbsForward <= KINDA_SMALL_NUMBER)
+	{
+		return StrafeSpeed;
+	}
+
+	if (AbsRight <= KINDA_SMALL_NUMBER)
+	{
+		return ForwardOrBackwardSpeed;
+	}
+
+	// 斜向移动时，根据横向输入占比在“前/后速度”和“横移速度”之间插值，再乘整体斜向倍率。
+	const float StrafeAlpha = AbsRight / FMath::Max(KINDA_SMALL_NUMBER, AbsForward + AbsRight);
+	const float BlendedSpeed = FMath::Lerp(ForwardOrBackwardSpeed, StrafeSpeed, StrafeAlpha);
+	return BlendedSpeed * DiagonalSpeedScale;
+}
+
+FRotator AMyFpsCharacter::GetMovementControlYawRotation() const
+{
+	const FRotator ControlRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
+	return FRotator(0.0f, ControlRotation.Yaw, 0.0f);
 }
 
 void AMyFpsCharacter::TurnMouse(float Value)
@@ -1078,6 +1184,50 @@ void AMyFpsCharacter::CreateDamageFeedbackWidget()
 
 	DamageFeedbackWidgetInstance->AddToViewport(16);
 	DamageFeedbackWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void AMyFpsCharacter::CreateNetworkDebugWidget()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] CreateNetworkDebugWidget called. Character=%s Class=%s Existing=%s"),
+		*GetNameSafe(this),
+		*GetNameSafe(NetworkDebugWidgetClass),
+		*GetNameSafe(NetworkDebugWidgetInstance));
+
+	if (NetworkDebugWidgetInstance || !NetworkDebugWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] Create skipped. Existing=%s Class=%s"),
+			*GetNameSafe(NetworkDebugWidgetInstance),
+			*GetNameSafe(NetworkDebugWidgetClass));
+		return;
+	}
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController || !PlayerController->IsLocalController())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] Create skipped. Controller=%s Local=%d"),
+			*GetNameSafe(PlayerController),
+			PlayerController ? PlayerController->IsLocalController() : false);
+		return;
+	}
+
+	NetworkDebugWidgetInstance = CreateWidget<UMyFpsNetworkDebugWidget>(PlayerController, NetworkDebugWidgetClass);
+	if (!NetworkDebugWidgetInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] CreateWidget failed. Controller=%s Class=%s"),
+			*GetNameSafe(PlayerController),
+			*GetNameSafe(NetworkDebugWidgetClass));
+		return;
+	}
+
+	// 调试面板默认隐藏，只在本地玩家按 F7 时显示。
+	NetworkDebugWidgetInstance->AddToViewport(250);
+	NetworkDebugWidgetInstance->SetPositionInViewport(FVector2D(24.0f, 24.0f), false);
+	NetworkDebugWidgetInstance->SetDesiredSizeInViewport(FVector2D(420.0f, 220.0f));
+	NetworkDebugWidgetInstance->SetAlignmentInViewport(FVector2D(0.0f, 0.0f));
+	NetworkDebugWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
+	UE_LOG(LogTemp, Warning, TEXT("[NetworkDebug] Widget created. Widget=%s OwningPlayer=%s"),
+		*GetNameSafe(NetworkDebugWidgetInstance),
+		*GetNameSafe(NetworkDebugWidgetInstance->GetOwningPlayer()));
 }
 
 void AMyFpsCharacter::SetCrosshairVisible(bool bVisible)
