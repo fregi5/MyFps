@@ -343,17 +343,23 @@ bool UMyFpsWeaponViewComponent::GetLeftHandIKTransform(bool bFirstPerson, FTrans
 	const FName LeftHandIKSocketName = bFirstPerson
 		? WeaponDefinition->FirstPersonLeftHandIKSocketName
 		: WeaponDefinition->ThirdPersonLeftHandIKSocketName;
+	const FName LeftHandIKTargetBoneName = bFirstPerson
+		? WeaponDefinition->FirstPersonLeftHandIKTargetBoneName
+		: WeaponDefinition->ThirdPersonLeftHandIKTargetBoneName;
 
 	if (!WeaponMesh
 		|| !AnimationMesh
 		|| !WeaponMesh->GetSkeletalMeshAsset()
-		|| !WeaponMesh->DoesSocketExist(LeftHandIKSocketName))
+		|| !WeaponMesh->DoesSocketExist(LeftHandIKSocketName)
+		|| AnimationMesh->GetBoneIndex(LeftHandIKTargetBoneName) == INDEX_NONE)
 	{
 		return false;
 	}
 
+	// 输出右手骨骼空间下的左手 IK 目标，避免快速转视角时世界空间目标和武器附着更新差半帧。
 	const FTransform SocketWorldTransform = WeaponMesh->GetSocketTransform(LeftHandIKSocketName, RTS_World);
-	OutTransform = SocketWorldTransform.GetRelativeTransform(AnimationMesh->GetComponentTransform());
+	const FTransform TargetBoneWorldTransform = AnimationMesh->GetSocketTransform(LeftHandIKTargetBoneName, RTS_World);
+	OutTransform = SocketWorldTransform.GetRelativeTransform(TargetBoneWorldTransform);
 	return true;
 }
 

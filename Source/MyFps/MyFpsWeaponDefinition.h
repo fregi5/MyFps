@@ -309,6 +309,9 @@ public:
 	FName FirstPersonLeftHandIKSocketName = TEXT("LeftHandIK");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName FirstPersonLeftHandIKTargetBoneName = TEXT("hand_r");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
 	FVector FirstPersonAttachLocationOffset = FVector::ZeroVector;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
@@ -322,6 +325,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
 	FName ThirdPersonLeftHandIKSocketName = TEXT("LeftHandIK");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
+	FName ThirdPersonLeftHandIKTargetBoneName = TEXT("hand_r");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Attachment")
 	FVector ThirdPersonAttachLocationOffset = FVector::ZeroVector;
